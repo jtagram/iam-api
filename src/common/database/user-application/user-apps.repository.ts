@@ -21,4 +21,8 @@ export class UserAppsRepository {
   ): Promise<boolean> {
     return this.repository.exists({ where: { appUserId, applicationId } });
   }
+
+  findAllByAppUserId(appUserId: number): Promise<UserAppEntity[]> {
+    return this.repository.find({ where: { appUserId } });
+  }
 }

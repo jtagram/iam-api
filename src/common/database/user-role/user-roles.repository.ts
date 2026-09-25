@@ -27,4 +27,8 @@ export class UserRolesRepository {
   existsForAppUserAndRole(appUserId: number, roleId: number): Promise<boolean> {
     return this.repository.exists({ where: { appUserId, roleId } });
   }
+
+  findAllByAppUserId(appUserId: number): Promise<UserRoleEntity[]> {
+    return this.repository.find({ where: { appUserId } });
+  }
 }

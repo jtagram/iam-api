@@ -24,6 +24,7 @@ import { AppUsersService } from './apps-users.service';
 import { AppUsersLoginService } from './apps-users-login.service';
 import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
+import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
 
 @Controller('apps-users')
 export class AppUsersController {
@@ -55,6 +56,14 @@ export class AppUsersController {
     @Headers('x-application-name') applicationName: string,
   ): Promise<ResponseLogin> {
     return this.appUsersLoginService.login(dto, applicationName);
+  }
+
+  @Get(':id/applications')
+  @Roles(Role.ADMIN)
+  findAssignedApplications(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ResponseBody<AppUserApplicationRolesResponse[]>> {
+    return this.appUsersService.findAssignedApplications(id);
   }
 
   @Post(':id/applications')

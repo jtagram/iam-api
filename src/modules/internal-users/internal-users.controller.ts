@@ -21,6 +21,7 @@ import { InternalUsersLoginService } from './internal-users-login.service';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { LoginInternalUserDto } from './dto/login-internal-user.dto';
 import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
+import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 
 @Controller('internal-users')
@@ -53,6 +54,14 @@ export class InternalUsersController {
     @Headers('x-application-name') applicationName: string,
   ): Promise<ResponseLogin> {
     return this.internalUsersLoginService.login(dto, applicationName);
+  }
+
+  @Get(':id/applications')
+  @Roles(Role.ADMIN)
+  findAssignedApplications(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<InternalUserApplicationRolesResponse[]> {
+    return this.internalUsersService.findAssignedApplications(id);
   }
 
   @Post(':id/applications')

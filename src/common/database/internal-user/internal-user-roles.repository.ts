@@ -35,4 +35,10 @@ export class InternalUserRolesRepository {
   ): Promise<boolean> {
     return this.repository.exists({ where: { internalUserId, roleId } });
   }
+
+  findAllByInternalUserId(
+    internalUserId: number,
+  ): Promise<InternalUserRoleEntity[]> {
+    return this.repository.find({ where: { internalUserId } });
+  }
 }

@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
 import { InternalUserAppEntity } from '../../common/database/internal-user/internal-user-app.entity';
@@ -11,6 +15,7 @@ import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
+import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
 import { InternalUserMapper } from './internal-user.mapper';
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -53,6 +58,40 @@ export class InternalUsersService {
     return internalUsers.map((internalUser) =>
       InternalUserMapper.toResponse(internalUser),
     );
+  }
+
+  async findAssignedApplications(
+    userId: number,
+  ): Promise<InternalUserApplicationRolesResponse[]> {
+    const internalUser = await this.internalUsersRepository.findById(userId);
+    if (!internalUser) {
+      throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
+    }
+
+    const internalUserApps =
+      await this.internalUserAppsRepository.findAllByInternalUserId(userId);
+    const applications = await this.applicationsRepository.findByIds(
+      internalUserApps.map((internalUserApp) => internalUserApp.applicationId),
+    );
+
+    const internalUserRoles =
+      await this.internalUserRolesRepository.findAllByInternalUserId(userId);
+    const roles = await this.rolesRepository.findByIds(
+      internalUserRoles.map((internalUserRole) => internalUserRole.roleId),
+    );
+
+    return applications.map((application) => ({
+      applicationId: application.id,
+      applicationName: application.name,
+      applicationDescription: application.description,
+      roles: roles
+        .filter((role) => role.applicationId === application.id)
+        .map((role) => ({
+          id: role.id,
+          name: role.name,
+          description: role.description,
+        })),
+    }));
   }
 
   async assignApplication(

@@ -25,4 +25,10 @@ export class InternalUserAppsRepository {
       where: { internalUserId, applicationId },
     });
   }
+
+  findAllByInternalUserId(
+    internalUserId: number,
+  ): Promise<InternalUserAppEntity[]> {
+    return this.repository.find({ where: { internalUserId } });
+  }
 }

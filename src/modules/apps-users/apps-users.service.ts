@@ -18,6 +18,7 @@ import { CreateAppUserDto } from './dto/create-app-user.dto';
 import { AppUserMapper } from './app-user.mapper';
 import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
+import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
 import { CredentialGenerator } from './credential-generator';
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -75,6 +76,43 @@ export class AppUsersService {
 
   hashSecret(secret: string): Promise<string> {
     return bcrypt.hash(secret, BCRYPT_SALT_ROUNDS);
+  }
+
+  async findAssignedApplications(
+    userId: number,
+  ): Promise<ResponseBody<AppUserApplicationRolesResponse[]>> {
+    const appUser = await this.appUsersRepository.findById(userId);
+    if (!appUser) {
+      throw new NotFoundException(APP_USER_NOT_FOUND_MESSAGE);
+    }
+
+    const userApps = await this.userAppsRepository.findAllByAppUserId(userId);
+    const applications = await this.applicationsRepository.findByIds(
+      userApps.map((userApp) => userApp.applicationId),
+    );
+
+    const userRoles = await this.userRolesRepository.findAllByAppUserId(userId);
+    const roles = await this.rolesRepository.findByIds(
+      userRoles.map((userRole) => userRole.roleId),
+    );
+
+    const data = applications.map((application) => ({
+      applicationId: application.id,
+      applicationName: application.name,
+      applicationDescription: application.description,
+      roles: roles
+        .filter((role) => role.applicationId === application.id)
+        .map((role) => ({
+          id: role.id,
+          name: role.name,
+          description: role.description,
+        })),
+    }));
+
+    return ResponseBody.builder<AppUserApplicationRolesResponse[]>()
+      .withMsg('Assigned applications retrieved successfully')
+      .withData(data)
+      .build();
   }
 
   async assignApplication(
