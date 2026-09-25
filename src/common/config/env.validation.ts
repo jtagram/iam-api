@@ -36,15 +36,6 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   DATABASE_NAME!: string;
 
-  /**
-   * PEM-encoded RSA private/public key pair (RS256), not a shared HMAC
-   * secret -- this app is the only one that ever signs (needs
-   * `JWT_PRIVATE_KEY`), while any other service in the ecosystem
-   * verifies against the public half alone, fetched from
-   * `GET /.well-known/jwks.json` (see `modules/jwks/`), never handed
-   * this env var directly. See `documentation/generating-jwt-keys.md`
-   * for how to produce both values.
-   */
   @IsString()
   @IsNotEmpty()
   JWT_PRIVATE_KEY!: string;
@@ -53,13 +44,6 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   JWT_PUBLIC_KEY!: string;
 
-  /**
-   * `jsonwebtoken`'s `expiresIn` format (e.g. `1h`, `15m`, `3600`) — kept
-   * as a plain string and passed straight through, not parsed here.
-   * Unlike ticket-hub-api (which hardcodes a 1h `TOKEN_EXPIRY` constant),
-   * this app takes it from config so machine-to-machine token lifetime
-   * can be tuned per-deployment without a rebuild.
-   */
   @IsString()
   @IsNotEmpty()
   JWT_EXPIRES_IN!: string;
