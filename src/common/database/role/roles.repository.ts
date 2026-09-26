@@ -29,4 +29,16 @@ export class RolesRepository {
     }
     return this.repository.find({ where: { id: In(ids) } });
   }
+
+  findAllByApplicationIdAndNames(
+    applicationId: number,
+    names: string[],
+  ): Promise<RoleEntity[]> {
+    if (names.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository.find({
+      where: { applicationId, name: In(names) },
+    });
+  }
 }

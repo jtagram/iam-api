@@ -16,6 +16,7 @@ import { AssignRoleDto } from '../../common/dto/assign-role.dto';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
 import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
+import { FindInternalUsersByRoleDto } from './dto/find-internal-users-by-role.dto';
 import { InternalUserMapper } from './internal-user.mapper';
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -55,6 +56,37 @@ export class InternalUsersService {
 
   async findAll(): Promise<InternalUserCreatedResponse[]> {
     const internalUsers = await this.internalUsersRepository.findAll();
+    return internalUsers.map((internalUser) =>
+      InternalUserMapper.toResponse(internalUser),
+    );
+  }
+
+  async findByApplicationAndRoles(
+    dto: FindInternalUsersByRoleDto,
+  ): Promise<InternalUserCreatedResponse[]> {
+    const application = await this.applicationsRepository.findByName(
+      dto.applicationName,
+    );
+    if (!application) {
+      throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
+    }
+
+    const roleNames = dto.roles
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
+    const roles = await this.rolesRepository.findAllByApplicationIdAndNames(
+      application.id,
+      roleNames,
+    );
+
+    const internalUserIds =
+      await this.internalUserRolesRepository.findInternalUserIdsByRoleIds(
+        roles.map((role) => role.id),
+      );
+    const internalUsers =
+      await this.internalUsersRepository.findByIds(internalUserIds);
+
     return internalUsers.map((internalUser) =>
       InternalUserMapper.toResponse(internalUser),
     );

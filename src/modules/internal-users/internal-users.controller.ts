@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import { InternalUserAppEntity } from '../../common/database/internal-user/internal-user-app.entity';
 import { InternalUserRoleEntity } from '../../common/database/internal-user/internal-user-role.entity';
@@ -22,6 +23,7 @@ import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { LoginInternalUserDto } from './dto/login-internal-user.dto';
 import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
 import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
+import { FindInternalUsersByRoleDto } from './dto/find-internal-users-by-role.dto';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 
 @Controller('internal-users')
@@ -44,6 +46,14 @@ export class InternalUsersController {
   @Roles(Role.ADMIN)
   findAll(): Promise<InternalUserCreatedResponse[]> {
     return this.internalUsersService.findAll();
+  }
+
+  @Get('by-role')
+  @Public()
+  findByApplicationAndRoles(
+    @Query() query: FindInternalUsersByRoleDto,
+  ): Promise<InternalUserCreatedResponse[]> {
+    return this.internalUsersService.findByApplicationAndRoles(query);
   }
 
   @Post('login')

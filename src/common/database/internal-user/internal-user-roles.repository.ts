@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { InternalUserRoleEntity } from './internal-user-role.entity';
 
 @Injectable()
@@ -40,5 +40,16 @@ export class InternalUserRolesRepository {
     internalUserId: number,
   ): Promise<InternalUserRoleEntity[]> {
     return this.repository.find({ where: { internalUserId } });
+  }
+
+  async findInternalUserIdsByRoleIds(roleIds: number[]): Promise<number[]> {
+    if (roleIds.length === 0) {
+      return [];
+    }
+    const rows = await this.repository.find({
+      where: { roleId: In(roleIds) },
+      select: { internalUserId: true },
+    });
+    return [...new Set(rows.map((row) => row.internalUserId))];
   }
 }
