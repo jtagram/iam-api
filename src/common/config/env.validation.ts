@@ -53,6 +53,10 @@ export class EnvironmentVariables {
 
   @IsIn(PINO_LOG_LEVELS)
   LOG_LEVEL!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  IAM_APPLICATION_NAME!: string;
 }
 
 export function validate(
