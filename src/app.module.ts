@@ -15,6 +15,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { JwksModule } from './modules/jwks/jwks.module';
 import { LoggerModule } from './instrument/logger/logger.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 const jwtModule = JwtModule.registerAsync({
   inject: [ConfigService],
@@ -31,6 +32,7 @@ const jwtModule = JwtModule.registerAsync({
     DatabaseModule,
     jwtModule,
     JwksModule,
+    AuthModule,
     ApplicationsModule,
     AppUsersModule,
     RolesModule,
