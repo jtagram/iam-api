@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -9,7 +10,9 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { InternalUserAppEntity } from '../../common/database/internal-user/internal-user-app.entity';
 import { InternalUserRoleEntity } from '../../common/database/internal-user/internal-user-role.entity';
 import { Role } from '../../common/database/role/role.enum';
@@ -17,6 +20,7 @@ import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
 import { Public } from '../../common/guards/public.decorator';
 import { Roles } from '../../common/guards/roles.decorator';
+import { AuthenticatedUser } from '../../common/jwt/authenticated-user';
 import { InternalUsersService } from './internal-users.service';
 import { InternalUsersLoginService } from './internal-users-login.service';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
@@ -49,10 +53,15 @@ export class InternalUsersController {
   }
 
   @Get('by-role')
-  @Public()
   findByApplicationAndRoles(
     @Query() query: FindInternalUsersByRoleDto,
+    @Req() request: Request & { user?: AuthenticatedUser },
   ): Promise<InternalUserCreatedResponse[]> {
+    if (request.user?.apps.application.name !== query.applicationName) {
+      throw new ForbiddenException(
+        'This token was not issued for the requested application',
+      );
+    }
     return this.internalUsersService.findByApplicationAndRoles(query);
   }
 
