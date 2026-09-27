@@ -5,13 +5,13 @@ export class AppUserEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ name: 'cliente_id', length: 15, unique: true })
+  @Column({ name: 'cliente_id', length: 30, unique: true })
   clienteId!: string;
 
   @Column({ name: 'cliente_secret', length: 60 })
   clienteSecret!: string;
 
-  @Column({ length: 20 })
+  @Column({ length: 30 })
   name!: string;
 
   @Column({ length: 200 })

@@ -8,7 +8,7 @@ export class RoleEntity {
   @Column({ name: 'application_id', type: 'int' })
   applicationId!: number;
 
-  @Column({ length: 20 })
+  @Column({ length: 30 })
   name!: string;
 
   @Column({ length: 200 })
