@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
 @Entity({ name: 'apps_roles' })
+@Unique(['applicationId', 'name'])
 export class RoleEntity {
   @PrimaryGeneratedColumn()
   id!: number;

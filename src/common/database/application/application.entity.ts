@@ -5,7 +5,7 @@ export class ApplicationEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ length: 30 })
+  @Column({ length: 30, unique: true })
   name!: string;
 
   @Column({ length: 200 })
