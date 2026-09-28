@@ -100,14 +100,23 @@ export class InternalUsersService {
       throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
     }
 
+    const internalUserApps =
+      await this.internalUserAppsRepository.findAllByInternalUserId(userId);
     const internalUserRoles =
       await this.internalUserRolesRepository.findAllByInternalUserId(userId);
     const roles = await this.rolesRepository.findByIds(
       internalUserRoles.map((internalUserRole) => internalUserRole.roleId),
     );
 
+    // An application must show up here whether it came from
+    // assignApplication() (internal_users_applications) or from
+    // assignRole() (internal_users_roles) alone — either one is a real
+    // assignment on its own.
     const applicationIds = [
-      ...new Set(roles.map((role) => role.applicationId)),
+      ...new Set([
+        ...internalUserApps.map((internalUserApp) => internalUserApp.applicationId),
+        ...internalUserRoles.map((internalUserRole) => internalUserRole.applicationId),
+      ]),
     ];
     const applications =
       await this.applicationsRepository.findByIds(applicationIds);

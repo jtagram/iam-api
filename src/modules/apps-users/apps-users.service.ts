@@ -87,11 +87,20 @@ export class AppUsersService {
     }
 
     const userApps = await this.userAppsRepository.findAllByAppUserId(userId);
-    const applications = await this.applicationsRepository.findByIds(
-      userApps.map((userApp) => userApp.applicationId),
-    );
-
     const userRoles = await this.userRolesRepository.findAllByAppUserId(userId);
+
+    // A role assignment (apps_users_roles) grants real access on its own —
+    // it's what login and downstream RolesGuards actually check — so an
+    // application must show up here even if it was only ever assigned
+    // through assignRole() and never went through assignApplication().
+    const applicationIds = new Set([
+      ...userApps.map((userApp) => userApp.applicationId),
+      ...userRoles.map((userRole) => userRole.applicationId),
+    ]);
+    const applications = await this.applicationsRepository.findByIds([
+      ...applicationIds,
+    ]);
+
     const roles = await this.rolesRepository.findByIds(
       userRoles.map((userRole) => userRole.roleId),
     );
