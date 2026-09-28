@@ -100,17 +100,17 @@ export class InternalUsersService {
       throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
     }
 
-    const internalUserApps =
-      await this.internalUserAppsRepository.findAllByInternalUserId(userId);
-    const applications = await this.applicationsRepository.findByIds(
-      internalUserApps.map((internalUserApp) => internalUserApp.applicationId),
-    );
-
     const internalUserRoles =
       await this.internalUserRolesRepository.findAllByInternalUserId(userId);
     const roles = await this.rolesRepository.findByIds(
       internalUserRoles.map((internalUserRole) => internalUserRole.roleId),
     );
+
+    const applicationIds = [
+      ...new Set(roles.map((role) => role.applicationId)),
+    ];
+    const applications =
+      await this.applicationsRepository.findByIds(applicationIds);
 
     return applications.map((application) => ({
       applicationId: application.id,
