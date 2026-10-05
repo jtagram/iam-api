@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { JWT_KEY_ID } from '../../common/jwt/jwt-key-id';
 import { InternalUsersController } from './internal-users.controller';
+import { InternalUsersLoginController } from './internal-users-login.controller';
 import { InternalUsersService } from './internal-users.service';
 import { InternalUsersLoginService } from './internal-users-login.service';
 
@@ -16,7 +17,7 @@ const jwtModule = JwtModule.registerAsync({
 
 @Module({
   imports: [jwtModule],
-  controllers: [InternalUsersController],
+  controllers: [InternalUsersController, InternalUsersLoginController],
   providers: [InternalUsersService, InternalUsersLoginService],
 })
 export class InternalUsersModule {}

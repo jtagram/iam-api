@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { JWT_KEY_ID } from '../../common/jwt/jwt-key-id';
 import { AppUsersController } from './apps-users.controller';
+import { AppUsersLoginController } from './apps-users-login.controller';
 import { AppUsersService } from './apps-users.service';
 import { AppUsersLoginService } from './apps-users-login.service';
 
@@ -16,7 +17,7 @@ const jwtModule = JwtModule.registerAsync({
 
 @Module({
   imports: [jwtModule],
-  controllers: [AppUsersController],
+  controllers: [AppUsersController, AppUsersLoginController],
   providers: [AppUsersService, AppUsersLoginService],
 })
 export class AppUsersModule {}

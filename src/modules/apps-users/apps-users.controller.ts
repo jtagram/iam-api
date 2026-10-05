@@ -16,31 +16,20 @@ import { AssignRoleDto } from '../../common/dto/assign-role.dto';
 import { ConnectionResponse } from '../../common/dto/connection-response.dto';
 import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
 import { ResponseBody } from '../../common/dto/response-body.dto';
-import { ResponseLogin } from '../../common/dto/response-login.dto';
-import {
-  ApplicationName,
-  TargetApplication,
-} from '../../common/decorators/application-name.decorator';
-import { Public } from '../../common/guards/public.decorator';
 import { Roles } from '../../common/guards/roles.decorator';
 import { CreateAppUserDto } from './dto/create-app-user.dto';
-import { LoginDto } from './dto/login.dto';
 import { AppUsersService } from './apps-users.service';
-import { AppUsersLoginService } from './apps-users-login.service';
 import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
 import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
 
 @Controller('apps-users')
+@Roles(Role.ADMIN)
 export class AppUsersController {
-  constructor(
-    private readonly appUsersService: AppUsersService,
-    private readonly appUsersLoginService: AppUsersLoginService,
-  ) {}
+  constructor(private readonly appUsersService: AppUsersService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Roles(Role.ADMIN)
   create(
     @Body() dto: CreateAppUserDto,
   ): Promise<ResponseBody<AppUserCreatedResponse>> {
@@ -48,28 +37,11 @@ export class AppUsersController {
   }
 
   @Get()
-  @Roles(Role.ADMIN)
   findAll(): Promise<ResponseBody<AppUserResponse[]>> {
     return this.appUsersService.findAll();
   }
 
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @Public()
-  login(
-    @Body() dto: LoginDto,
-    @ApplicationName() originApplicationName: string,
-    @TargetApplication() targetApplicationName: string,
-  ): Promise<ResponseLogin> {
-    return this.appUsersLoginService.login(
-      dto,
-      originApplicationName,
-      targetApplicationName,
-    );
-  }
-
   @Get(':id/applications')
-  @Roles(Role.ADMIN)
   findAssignedApplications(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ResponseBody<AppUserApplicationRolesResponse[]>> {
@@ -78,7 +50,6 @@ export class AppUsersController {
 
   @Post(':id/applications')
   @HttpCode(HttpStatus.CREATED)
-  @Roles(Role.ADMIN)
   assignApplication(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignApplicationDto,
@@ -88,7 +59,6 @@ export class AppUsersController {
 
   @Post(':id/roles')
   @HttpCode(HttpStatus.CREATED)
-  @Roles(Role.ADMIN)
   assignRole(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignRoleDto,
@@ -97,7 +67,6 @@ export class AppUsersController {
   }
 
   @Get(':id/connections')
-  @Roles(Role.ADMIN)
   findConnections(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ResponseBody<ConnectionResponse[]>> {
@@ -106,7 +75,6 @@ export class AppUsersController {
 
   @Post(':id/connections')
   @HttpCode(HttpStatus.CREATED)
-  @Roles(Role.ADMIN)
   createConnection(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateConnectionDto,
