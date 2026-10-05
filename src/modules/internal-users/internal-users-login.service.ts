@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,6 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
+import { InternalUserConnectionsRepository } from '../../common/database/internal-user-connection/internal-user-connections.repository';
+import { InternalUserAppsRepository } from '../../common/database/internal-user/internal-user-apps.repository';
 import { InternalUserRolesRepository } from '../../common/database/internal-user/internal-user-roles.repository';
 import { InternalUsersRepository } from '../../common/database/internal-user/internal-users.repository';
 import { RolesRepository } from '../../common/database/role/roles.repository';
@@ -21,15 +22,18 @@ const INVALID_CREDENTIALS_MESSAGE = 'Invalid credentials';
 
 const APPLICATION_NOT_FOUND_MESSAGE = 'Application not found';
 
-const MISSING_APPLICATION_NAME_MESSAGE = 'application_name header is required';
-
 const FORBIDDEN_APPLICATION_ACCESS_MESSAGE = 'No access to this application';
+
+const FORBIDDEN_CONNECTION_MESSAGE =
+  'No connection allowed between these applications';
 
 @Injectable()
 export class InternalUsersLoginService {
   constructor(
     private readonly internalUsersRepository: InternalUsersRepository,
     private readonly applicationsRepository: ApplicationsRepository,
+    private readonly internalUserAppsRepository: InternalUserAppsRepository,
+    private readonly internalUserConnectionsRepository: InternalUserConnectionsRepository,
     private readonly internalUserRolesRepository: InternalUserRolesRepository,
     private readonly rolesRepository: RolesRepository,
     private readonly jwtService: JwtService,
@@ -38,18 +42,9 @@ export class InternalUsersLoginService {
 
   async login(
     dto: LoginInternalUserDto,
-    applicationName: string,
+    originApplicationName: string,
+    targetApplicationName: string,
   ): Promise<ResponseLogin> {
-    if (!applicationName) {
-      throw new BadRequestException(MISSING_APPLICATION_NAME_MESSAGE);
-    }
-
-    const application =
-      await this.applicationsRepository.findByName(applicationName);
-    if (!application) {
-      throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
-    }
-
     const internalUser = await this.internalUsersRepository.findByEmail(
       dto.email,
     );
@@ -63,6 +58,32 @@ export class InternalUsersLoginService {
     );
     if (!passwordMatches) {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
+
+    const originApplication = await this.applicationsRepository.findByName(
+      originApplicationName,
+    );
+    const application = await this.applicationsRepository.findByName(
+      targetApplicationName,
+    );
+    if (!originApplication || !application) {
+      throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
+    }
+
+    await this.assertHasApplicationAccess(
+      internalUser.id,
+      originApplication.id,
+    );
+    await this.assertHasApplicationAccess(internalUser.id, application.id);
+
+    const hasConnection =
+      await this.internalUserConnectionsRepository.existsForInternalUserAndApplications(
+        internalUser.id,
+        originApplication.id,
+        application.id,
+      );
+    if (!hasConnection) {
+      throw new ForbiddenException(FORBIDDEN_CONNECTION_MESSAGE);
     }
 
     const roleIds =
@@ -81,14 +102,29 @@ export class InternalUsersLoginService {
       .withSub(internalUser.id)
       .withEmail(internalUser.email)
       .withApps(apps)
+      .withOrigin(originApplication.name)
       .build();
 
-    const access_token = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get<string>(
-        'JWT_EXPIRES_IN',
-      ) as JwtSignOptions['expiresIn'],
-    });
+    const expiresIn = this.configService.get<string>(
+      'JWT_EXPIRES_IN',
+    ) as JwtSignOptions['expiresIn'];
+
+    const access_token = this.jwtService.sign(payload, { expiresIn });
 
     return new ResponseLogin(access_token);
+  }
+
+  private async assertHasApplicationAccess(
+    internalUserId: number,
+    applicationId: number,
+  ): Promise<void> {
+    const hasApplicationAccess =
+      await this.internalUserAppsRepository.existsForInternalUserAndApplication(
+        internalUserId,
+        applicationId,
+      );
+    if (!hasApplicationAccess) {
+      throw new ForbiddenException(FORBIDDEN_APPLICATION_ACCESS_MESSAGE);
+    }
   }
 }

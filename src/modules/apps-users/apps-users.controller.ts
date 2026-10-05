@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -14,8 +13,14 @@ import { UserRoleEntity } from '../../common/database/user-role/user-role.entity
 import { Role } from '../../common/database/role/role.enum';
 import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
+import { ConnectionResponse } from '../../common/dto/connection-response.dto';
+import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
 import { ResponseBody } from '../../common/dto/response-body.dto';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
+import {
+  ApplicationName,
+  TargetApplication,
+} from '../../common/decorators/application-name.decorator';
 import { Public } from '../../common/guards/public.decorator';
 import { Roles } from '../../common/guards/roles.decorator';
 import { CreateAppUserDto } from './dto/create-app-user.dto';
@@ -53,9 +58,14 @@ export class AppUsersController {
   @Public()
   login(
     @Body() dto: LoginDto,
-    @Headers('x-application-name') applicationName: string,
+    @ApplicationName() originApplicationName: string,
+    @TargetApplication() targetApplicationName: string,
   ): Promise<ResponseLogin> {
-    return this.appUsersLoginService.login(dto, applicationName);
+    return this.appUsersLoginService.login(
+      dto,
+      originApplicationName,
+      targetApplicationName,
+    );
   }
 
   @Get(':id/applications')
@@ -84,5 +94,23 @@ export class AppUsersController {
     @Body() dto: AssignRoleDto,
   ): Promise<ResponseBody<UserRoleEntity>> {
     return this.appUsersService.assignRole(id, dto);
+  }
+
+  @Get(':id/connections')
+  @Roles(Role.ADMIN)
+  findConnections(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ResponseBody<ConnectionResponse[]>> {
+    return this.appUsersService.findConnections(id);
+  }
+
+  @Post(':id/connections')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles(Role.ADMIN)
+  createConnection(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateConnectionDto,
+  ): Promise<ResponseBody<ConnectionResponse>> {
+    return this.appUsersService.createConnection(id, dto);
   }
 }

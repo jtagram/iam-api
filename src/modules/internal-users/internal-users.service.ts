@@ -1,10 +1,13 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
+import { InternalUserConnectionEntity } from '../../common/database/internal-user-connection/internal-user-connection.entity';
+import { InternalUserConnectionsRepository } from '../../common/database/internal-user-connection/internal-user-connections.repository';
 import { InternalUserAppEntity } from '../../common/database/internal-user/internal-user-app.entity';
 import { InternalUserAppsRepository } from '../../common/database/internal-user/internal-user-apps.repository';
 import { InternalUserRoleEntity } from '../../common/database/internal-user/internal-user-role.entity';
@@ -13,6 +16,8 @@ import { InternalUsersRepository } from '../../common/database/internal-user/int
 import { RolesRepository } from '../../common/database/role/roles.repository';
 import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
+import { ConnectionResponse } from '../../common/dto/connection-response.dto';
+import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
 import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
@@ -27,6 +32,12 @@ const ROLE_NOT_FOUND_MESSAGE = 'Role not found';
 const APPLICATION_ALREADY_ASSIGNED_MESSAGE =
   'Application already assigned to this user';
 const ROLE_ALREADY_ASSIGNED_MESSAGE = 'Role already assigned to this user';
+const SAME_ORIGIN_AND_DESTINATION_MESSAGE =
+  'Origin and destination applications must be different';
+const APPLICATION_NOT_ASSIGNED_MESSAGE =
+  'The user does not have this application assigned';
+const CONNECTION_ALREADY_EXISTS_MESSAGE =
+  'This connection already exists for the user';
 
 @Injectable()
 export class InternalUsersService {
@@ -36,6 +47,7 @@ export class InternalUsersService {
     private readonly rolesRepository: RolesRepository,
     private readonly internalUserAppsRepository: InternalUserAppsRepository,
     private readonly internalUserRolesRepository: InternalUserRolesRepository,
+    private readonly internalUserConnectionsRepository: InternalUserConnectionsRepository,
   ) {}
 
   async create(
@@ -114,8 +126,12 @@ export class InternalUsersService {
     // assignment on its own.
     const applicationIds = [
       ...new Set([
-        ...internalUserApps.map((internalUserApp) => internalUserApp.applicationId),
-        ...internalUserRoles.map((internalUserRole) => internalUserRole.applicationId),
+        ...internalUserApps.map(
+          (internalUserApp) => internalUserApp.applicationId,
+        ),
+        ...internalUserRoles.map(
+          (internalUserRole) => internalUserRole.applicationId,
+        ),
       ]),
     ];
     const applications =
@@ -194,5 +210,102 @@ export class InternalUsersService {
     entity.roleId = dto.roleId;
     entity.applicationId = role.applicationId;
     return this.internalUserRolesRepository.createAssignment(entity);
+  }
+
+  async findConnections(userId: number): Promise<ConnectionResponse[]> {
+    const internalUser = await this.internalUsersRepository.findById(userId);
+    if (!internalUser) {
+      throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
+    }
+
+    const connections =
+      await this.internalUserConnectionsRepository.findAllByInternalUserId(
+        userId,
+      );
+    return this.toConnectionResponses(connections);
+  }
+
+  async createConnection(
+    userId: number,
+    dto: CreateConnectionDto,
+  ): Promise<ConnectionResponse> {
+    const internalUser = await this.internalUsersRepository.findById(userId);
+    if (!internalUser) {
+      throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
+    }
+
+    if (dto.originApplicationId === dto.destinationApplicationId) {
+      throw new BadRequestException(SAME_ORIGIN_AND_DESTINATION_MESSAGE);
+    }
+
+    const applications = await this.applicationsRepository.findByIds([
+      dto.originApplicationId,
+      dto.destinationApplicationId,
+    ]);
+    if (applications.length !== 2) {
+      throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
+    }
+
+    for (const applicationId of [
+      dto.originApplicationId,
+      dto.destinationApplicationId,
+    ]) {
+      const isAssigned =
+        await this.internalUserAppsRepository.existsForInternalUserAndApplication(
+          userId,
+          applicationId,
+        );
+      if (!isAssigned) {
+        throw new BadRequestException(APPLICATION_NOT_ASSIGNED_MESSAGE);
+      }
+    }
+
+    const alreadyExists =
+      await this.internalUserConnectionsRepository.existsForInternalUserAndApplications(
+        userId,
+        dto.originApplicationId,
+        dto.destinationApplicationId,
+      );
+    if (alreadyExists) {
+      throw new ConflictException(CONNECTION_ALREADY_EXISTS_MESSAGE);
+    }
+
+    const entity = new InternalUserConnectionEntity();
+    entity.internalUserId = userId;
+    entity.originApplicationId = dto.originApplicationId;
+    entity.destinationApplicationId = dto.destinationApplicationId;
+    const created =
+      await this.internalUserConnectionsRepository.createConnection(entity);
+
+    const [response] = await this.toConnectionResponses([created]);
+    return response;
+  }
+
+  private async toConnectionResponses(
+    connections: InternalUserConnectionEntity[],
+  ): Promise<ConnectionResponse[]> {
+    const applicationIds = [
+      ...new Set(
+        connections.flatMap((connection) => [
+          connection.originApplicationId,
+          connection.destinationApplicationId,
+        ]),
+      ),
+    ];
+    const applications =
+      await this.applicationsRepository.findByIds(applicationIds);
+    const namesById = new Map(
+      applications.map((application) => [application.id, application.name]),
+    );
+
+    return connections.map((connection) => ({
+      id: connection.id,
+      originApplicationId: connection.originApplicationId,
+      originApplicationName: namesById.get(connection.originApplicationId)!,
+      destinationApplicationId: connection.destinationApplicationId,
+      destinationApplicationName: namesById.get(
+        connection.destinationApplicationId,
+      )!,
+    }));
   }
 }

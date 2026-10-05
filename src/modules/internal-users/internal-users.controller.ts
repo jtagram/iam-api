@@ -3,7 +3,6 @@ import {
   Controller,
   ForbiddenException,
   Get,
-  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -18,6 +17,12 @@ import { InternalUserRoleEntity } from '../../common/database/internal-user/inte
 import { Role } from '../../common/database/role/role.enum';
 import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
+import { ConnectionResponse } from '../../common/dto/connection-response.dto';
+import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
+import {
+  ApplicationName,
+  TargetApplication,
+} from '../../common/decorators/application-name.decorator';
 import { Public } from '../../common/guards/public.decorator';
 import { Roles } from '../../common/guards/roles.decorator';
 import { AuthenticatedUser } from '../../common/jwt/authenticated-user';
@@ -53,6 +58,7 @@ export class InternalUsersController {
   }
 
   @Get('by-role')
+  @Roles(Role.ADMIN)
   findByApplicationAndRoles(
     @Query() query: FindInternalUsersByRoleDto,
     @Req() request: Request & { user?: AuthenticatedUser },
@@ -70,9 +76,14 @@ export class InternalUsersController {
   @Public()
   login(
     @Body() dto: LoginInternalUserDto,
-    @Headers('x-application-name') applicationName: string,
+    @ApplicationName() originApplicationName: string,
+    @TargetApplication() targetApplicationName: string,
   ): Promise<ResponseLogin> {
-    return this.internalUsersLoginService.login(dto, applicationName);
+    return this.internalUsersLoginService.login(
+      dto,
+      originApplicationName,
+      targetApplicationName,
+    );
   }
 
   @Get(':id/applications')
@@ -101,5 +112,23 @@ export class InternalUsersController {
     @Body() dto: AssignRoleDto,
   ): Promise<InternalUserRoleEntity> {
     return this.internalUsersService.assignRole(id, dto);
+  }
+
+  @Get(':id/connections')
+  @Roles(Role.ADMIN)
+  findConnections(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ConnectionResponse[]> {
+    return this.internalUsersService.findConnections(id);
+  }
+
+  @Post(':id/connections')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles(Role.ADMIN)
+  createConnection(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateConnectionDto,
+  ): Promise<ConnectionResponse> {
+    return this.internalUsersService.createConnection(id, dto);
   }
 }

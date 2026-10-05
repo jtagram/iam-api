@@ -4,6 +4,8 @@ export class InternalUserPayloadJwt {
   sub!: number;
   email!: string;
   apps!: AppsPayload;
+  /** Name of the application that requested this token. */
+  origin!: string;
 
   static builder(): InternalUserPayloadJwtBuilder {
     return new InternalUserPayloadJwtBuilder();
@@ -14,6 +16,7 @@ export class InternalUserPayloadJwtBuilder {
   private sub?: number;
   private email?: string;
   private apps?: AppsPayload;
+  private origin?: string;
 
   withSub(sub: number): this {
     this.sub = sub;
@@ -30,6 +33,11 @@ export class InternalUserPayloadJwtBuilder {
     return this;
   }
 
+  withOrigin(origin: string): this {
+    this.origin = origin;
+    return this;
+  }
+
   build(): InternalUserPayloadJwt {
     if (this.sub === undefined) {
       throw new Error('InternalUserPayloadJwt.Builder: sub is required');
@@ -41,6 +49,15 @@ export class InternalUserPayloadJwtBuilder {
       throw new Error('InternalUserPayloadJwt.Builder: apps is required');
     }
 
-    return { sub: this.sub, email: this.email, apps: this.apps };
+    if (this.origin === undefined) {
+      throw new Error('InternalUserPayloadJwt.Builder: origin is required');
+    }
+
+    return {
+      sub: this.sub,
+      email: this.email,
+      apps: this.apps,
+      origin: this.origin,
+    };
   }
 }

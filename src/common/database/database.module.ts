@@ -3,10 +3,14 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApplicationEntity } from './application/application.entity';
 import { ApplicationsRepository } from './application/applications.repository';
+import { AppUserConnectionEntity } from './app-user-connection/app-user-connection.entity';
+import { AppUserConnectionsRepository } from './app-user-connection/app-user-connections.repository';
 import { AppUserEntity } from './app-user/app-user.entity';
 import { AppUsersRepository } from './app-user/app-users.repository';
 import { InternalUserAppEntity } from './internal-user/internal-user-app.entity';
 import { InternalUserAppsRepository } from './internal-user/internal-user-apps.repository';
+import { InternalUserConnectionEntity } from './internal-user-connection/internal-user-connection.entity';
+import { InternalUserConnectionsRepository } from './internal-user-connection/internal-user-connections.repository';
 import { InternalUserEntity } from './internal-user/internal-user.entity';
 import { InternalUserRoleEntity } from './internal-user/internal-user-role.entity';
 import { InternalUserRolesRepository } from './internal-user/internal-user-roles.repository';
@@ -42,6 +46,8 @@ import { UserRolesRepository } from './user-role/user-roles.repository';
           InternalUserEntity,
           InternalUserRoleEntity,
           InternalUserAppEntity,
+          InternalUserConnectionEntity,
+          AppUserConnectionEntity,
         ],
         synchronize: false,
       }),
@@ -55,6 +61,8 @@ import { UserRolesRepository } from './user-role/user-roles.repository';
       InternalUserEntity,
       InternalUserRoleEntity,
       InternalUserAppEntity,
+      InternalUserConnectionEntity,
+      AppUserConnectionEntity,
     ]),
   ],
   providers: [
@@ -66,6 +74,8 @@ import { UserRolesRepository } from './user-role/user-roles.repository';
     InternalUsersRepository,
     InternalUserRolesRepository,
     InternalUserAppsRepository,
+    InternalUserConnectionsRepository,
+    AppUserConnectionsRepository,
   ],
   exports: [
     ApplicationsRepository,
@@ -76,6 +86,8 @@ import { UserRolesRepository } from './user-role/user-roles.repository';
     InternalUsersRepository,
     InternalUserRolesRepository,
     InternalUserAppsRepository,
+    InternalUserConnectionsRepository,
+    AppUserConnectionsRepository,
     TypeOrmModule,
   ],
 })
