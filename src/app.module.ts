@@ -11,6 +11,7 @@ import { DatabaseModule } from './common/database/database.module';
 import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { UnknownExceptionFilter } from './common/filters/unknown-exception.filter';
+import { ApplicationAccessGuard } from './common/guards/application-access.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { JwksModule } from './modules/jwks/jwks.module';
@@ -43,6 +44,7 @@ const jwtModule = JwtModule.registerAsync({
     { provide: APP_FILTER, useClass: DatabaseExceptionFilter },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: ApplicationAccessGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
