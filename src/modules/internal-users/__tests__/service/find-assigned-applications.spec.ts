@@ -1,0 +1,144 @@
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import { NotFoundException } from '@nestjs/common';
+import { mockFn } from '../../../../../test/helpers/mocks';
+import { ApplicationsRepository } from '../../../../common/database/application/applications.repository';
+import { RolesRepository } from '../../../../common/database/role/roles.repository';
+import { InternalUsersRepository } from '../../../../common/database/internal-user/internal-users.repository';
+import { InternalUserAppsRepository } from '../../../../common/database/internal-user/internal-user-apps.repository';
+import { InternalUserRolesRepository } from '../../../../common/database/internal-user/internal-user-roles.repository';
+import { InternalUsersService } from '../../internal-users.service';
+
+const dataOf = (result: unknown) => result as Array<{ roles: unknown[] }>;
+
+describe('InternalUsersService.findAssignedApplications', () => {
+  let users: { findById: ReturnType<typeof mockFn> };
+  let applications: { findByIds: ReturnType<typeof mockFn> };
+  let roles: { findByIds: ReturnType<typeof mockFn> };
+  let userApps: { findAllByInternalUserId: ReturnType<typeof mockFn> };
+  let userRoles: { findAllByInternalUserId: ReturnType<typeof mockFn> };
+  let service: InternalUsersService;
+
+  beforeEach(() => {
+    users = { findById: mockFn() };
+    applications = { findByIds: mockFn() };
+    roles = { findByIds: mockFn() };
+    userApps = { findAllByInternalUserId: mockFn() };
+    userRoles = { findAllByInternalUserId: mockFn() };
+    service = new InternalUsersService(
+      users as unknown as InternalUsersRepository,
+      applications as unknown as ApplicationsRepository,
+      roles as unknown as RolesRepository,
+      userApps as unknown as InternalUserAppsRepository,
+      userRoles as unknown as InternalUserRolesRepository,
+      {} as never,
+    );
+    users.findById.mockResolvedValue({ id: 1 });
+    userApps.findAllByInternalUserId.mockResolvedValue([]);
+    userRoles.findAllByInternalUserId.mockResolvedValue([]);
+    applications.findByIds.mockResolvedValue([]);
+    roles.findByIds.mockResolvedValue([]);
+  });
+
+  it('throws NotFound when the user does not exist', async () => {
+    users.findById.mockResolvedValue(null);
+
+    await expect(service.findAssignedApplications(1)).rejects.toThrow(
+      new NotFoundException('Internal user not found'),
+    );
+    expect(userApps.findAllByInternalUserId).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty list for a user without applications nor roles', async () => {
+    await expect(service.findAssignedApplications(1)).resolves.toEqual([]);
+    expect(applications.findByIds).toHaveBeenCalledWith([]);
+    expect(roles.findByIds).toHaveBeenCalledWith([]);
+  });
+
+  it('returns an assigned application with no roles when none were assigned', async () => {
+    userApps.findAllByInternalUserId.mockResolvedValue([{ applicationId: 10 }]);
+    applications.findByIds.mockResolvedValue([
+      { id: 10, name: 'iam', description: 'Identity' },
+    ]);
+
+    await expect(service.findAssignedApplications(1)).resolves.toEqual([
+      {
+        applicationId: 10,
+        applicationName: 'iam',
+        applicationDescription: 'Identity',
+        roles: [],
+      },
+    ]);
+  });
+
+  it('groups each role under the application it belongs to', async () => {
+    userApps.findAllByInternalUserId.mockResolvedValue([
+      { applicationId: 10 },
+      { applicationId: 20 },
+    ]);
+    userRoles.findAllByInternalUserId.mockResolvedValue([
+      { applicationId: 10, roleId: 100 },
+      { applicationId: 20, roleId: 200 },
+    ]);
+    applications.findByIds.mockResolvedValue([
+      { id: 10, name: 'iam', description: 'Identity' },
+      { id: 20, name: 'hub', description: 'Tickets' },
+    ]);
+    roles.findByIds.mockResolvedValue([
+      { id: 100, applicationId: 10, name: 'ADMIN', description: 'Admin' },
+      { id: 200, applicationId: 20, name: 'VIEWER', description: 'Viewer' },
+    ]);
+
+    const result = await service.findAssignedApplications(1);
+
+    expect(dataOf(result).map((entry) => entry.roles)).toEqual([
+      [{ id: 100, name: 'ADMIN', description: 'Admin' }],
+      [{ id: 200, name: 'VIEWER', description: 'Viewer' }],
+    ]);
+  });
+
+  it('includes an application that only came from a role assignment', async () => {
+    userRoles.findAllByInternalUserId.mockResolvedValue([
+      { applicationId: 20, roleId: 200 },
+    ]);
+    applications.findByIds.mockResolvedValue([
+      { id: 20, name: 'hub', description: 'Tickets' },
+    ]);
+    roles.findByIds.mockResolvedValue([
+      { id: 200, applicationId: 20, name: 'VIEWER', description: 'Viewer' },
+    ]);
+
+    await service.findAssignedApplications(1);
+
+    expect(applications.findByIds).toHaveBeenCalledWith([20]);
+  });
+
+  it('looks each application up once when it came from both assignments', async () => {
+    userApps.findAllByInternalUserId.mockResolvedValue([{ applicationId: 10 }]);
+    userRoles.findAllByInternalUserId.mockResolvedValue([
+      { applicationId: 10, roleId: 100 },
+      { applicationId: 10, roleId: 101 },
+    ]);
+
+    await service.findAssignedApplications(1);
+
+    expect(applications.findByIds).toHaveBeenCalledWith([10]);
+  });
+
+  it('loads the roles by the ids of the role assignments', async () => {
+    userRoles.findAllByInternalUserId.mockResolvedValue([
+      { applicationId: 10, roleId: 100 },
+      { applicationId: 20, roleId: 200 },
+    ]);
+
+    await service.findAssignedApplications(1);
+
+    expect(roles.findByIds).toHaveBeenCalledWith([100, 200]);
+  });
+
+  it('propagates a repository failure', async () => {
+    const failure = new Error('db down');
+    userApps.findAllByInternalUserId.mockRejectedValue(failure);
+
+    await expect(service.findAssignedApplications(1)).rejects.toBe(failure);
+  });
+});
