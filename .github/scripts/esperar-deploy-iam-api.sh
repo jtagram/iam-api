@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPOSITORY_OWNER="${1-}"
 SINCE_TIMESTAMP="${2-}"
-WORKFLOW="${3:-deploy-iam-api.yml}"
+WORKFLOW="${3:-deploy-iam-api-prod.yml}"
 
 if [ -z "$REPOSITORY_OWNER" ] || [ -z "$SINCE_TIMESTAMP" ]; then
   echo "esperar-deploy-iam-api: se esperaban <repository-owner> <since-timestamp-utc>" >&2
