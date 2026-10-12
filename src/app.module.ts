@@ -14,6 +14,7 @@ import { UnknownExceptionFilter } from './common/filters/unknown-exception.filte
 import { ApplicationAccessGuard } from './common/guards/application-access.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { HealthModule } from './modules/health/health.module';
 import { JwksModule } from './modules/jwks/jwks.module';
 import { LoggerModule } from './instrument/logger/logger.module';
 
@@ -31,6 +32,7 @@ const jwtModule = JwtModule.registerAsync({
     LoggerModule,
     DatabaseModule,
     jwtModule,
+    HealthModule,
     JwksModule,
     ApplicationsModule,
     AppUsersModule,
