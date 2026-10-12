@@ -160,13 +160,13 @@ describe('AppUsersLoginService.login', () => {
   describe('applications', () => {
     it('throws NotFound when the origin application does not exist', async () => {
       await expect(service.login(dto, 'ghost', TARGET)).rejects.toThrow(
-        new NotFoundException('Application not found'),
+        new NotFoundException('Origin application not found'),
       );
     });
 
     it('throws NotFound when the target application does not exist', async () => {
       await expect(service.login(dto, ORIGIN, 'ghost')).rejects.toThrow(
-        new NotFoundException('Application not found'),
+        new NotFoundException('Target application not found'),
       );
     });
 
@@ -183,7 +183,7 @@ describe('AppUsersLoginService.login', () => {
       userApps.existsForAppUserAndApplication.mockResolvedValueOnce(false);
 
       await expect(service.login(dto, ORIGIN, TARGET)).rejects.toThrow(
-        new ForbiddenException('No access to this application'),
+        new ForbiddenException('No access to the origin application'),
       );
       expect(userApps.existsForAppUserAndApplication).toHaveBeenNthCalledWith(
         1,
@@ -198,7 +198,7 @@ describe('AppUsersLoginService.login', () => {
         .mockResolvedValueOnce(false);
 
       await expect(service.login(dto, ORIGIN, TARGET)).rejects.toThrow(
-        new ForbiddenException('No access to this application'),
+        new ForbiddenException('No access to the target application'),
       );
       expect(userApps.existsForAppUserAndApplication).toHaveBeenNthCalledWith(
         2,
@@ -226,7 +226,7 @@ describe('AppUsersLoginService.login', () => {
       userRoles.findRoleIdsForAppUserAndApplication.mockResolvedValue([]);
 
       await expect(service.login(dto, ORIGIN, TARGET)).rejects.toThrow(
-        new ForbiddenException('No access to this application'),
+        new ForbiddenException('No roles assigned in the target application'),
       );
       expect(
         userRoles.findRoleIdsForAppUserAndApplication,

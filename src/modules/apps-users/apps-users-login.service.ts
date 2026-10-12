@@ -20,9 +20,16 @@ import { AppUserPayloadJwt } from './app-user-payload-jwt';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid credentials';
 
-const APPLICATION_NOT_FOUND_MESSAGE = 'Application not found';
+const ORIGIN_APPLICATION_NOT_FOUND_MESSAGE = 'Origin application not found';
 
-const FORBIDDEN_APPLICATION_ACCESS_MESSAGE = 'No access to this application';
+const TARGET_APPLICATION_NOT_FOUND_MESSAGE = 'Target application not found';
+
+const FORBIDDEN_ORIGIN_ACCESS_MESSAGE = 'No access to the origin application';
+
+const FORBIDDEN_TARGET_ACCESS_MESSAGE = 'No access to the target application';
+
+const FORBIDDEN_NO_ROLES_MESSAGE =
+  'No roles assigned in the target application';
 
 const FORBIDDEN_CONNECTION_MESSAGE =
   'No connection allowed between these applications';
@@ -66,12 +73,23 @@ export class AppUsersLoginService {
     const application = await this.applicationsRepository.findByName(
       targetApplicationName,
     );
-    if (!originApplication || !application) {
-      throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
+    if (!originApplication) {
+      throw new NotFoundException(ORIGIN_APPLICATION_NOT_FOUND_MESSAGE);
+    }
+    if (!application) {
+      throw new NotFoundException(TARGET_APPLICATION_NOT_FOUND_MESSAGE);
     }
 
-    await this.assertHasApplicationAccess(appUser.id, originApplication.id);
-    await this.assertHasApplicationAccess(appUser.id, application.id);
+    await this.assertHasApplicationAccess(
+      appUser.id,
+      originApplication.id,
+      FORBIDDEN_ORIGIN_ACCESS_MESSAGE,
+    );
+    await this.assertHasApplicationAccess(
+      appUser.id,
+      application.id,
+      FORBIDDEN_TARGET_ACCESS_MESSAGE,
+    );
 
     const hasConnection =
       await this.appUserConnectionsRepository.existsForAppUserAndApplications(
@@ -89,7 +107,7 @@ export class AppUsersLoginService {
         application.id,
       );
     if (roleIds.length === 0) {
-      throw new ForbiddenException(FORBIDDEN_APPLICATION_ACCESS_MESSAGE);
+      throw new ForbiddenException(FORBIDDEN_NO_ROLES_MESSAGE);
     }
 
     const roles = await this.rolesRepository.findByIds(roleIds);
@@ -114,6 +132,7 @@ export class AppUsersLoginService {
   private async assertHasApplicationAccess(
     appUserId: number,
     applicationId: number,
+    forbiddenMessage: string,
   ): Promise<void> {
     const hasApplicationAccess =
       await this.userAppsRepository.existsForAppUserAndApplication(
@@ -121,7 +140,7 @@ export class AppUsersLoginService {
         applicationId,
       );
     if (!hasApplicationAccess) {
-      throw new ForbiddenException(FORBIDDEN_APPLICATION_ACCESS_MESSAGE);
+      throw new ForbiddenException(forbiddenMessage);
     }
   }
 }

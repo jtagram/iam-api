@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Post,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { UserAppEntity } from '../../common/database/user-application/user-app.entity';
 import { UserRoleEntity } from '../../common/database/user-role/user-role.entity';
 import { Role } from '../../common/database/role/role.enum';
@@ -22,7 +23,17 @@ import { AppUsersService } from './apps-users.service';
 import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
 import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
+import {
+  ApiCreateAppUser,
+  ApiFindAllAppUsers,
+  ApiFindAppUserApplications,
+  ApiAssignAppUserApplication,
+  ApiAssignAppUserRole,
+  ApiFindAppUserConnections,
+  ApiCreateAppUserConnection,
+} from './apps-users.swagger';
 
+@ApiTags('Apps users')
 @Controller('apps-users')
 @Roles(Role.ADMIN)
 export class AppUsersController {
@@ -30,6 +41,7 @@ export class AppUsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreateAppUser()
   create(
     @Body() dto: CreateAppUserDto,
   ): Promise<ResponseBody<AppUserCreatedResponse>> {
@@ -37,11 +49,13 @@ export class AppUsersController {
   }
 
   @Get()
+  @ApiFindAllAppUsers()
   findAll(): Promise<ResponseBody<AppUserResponse[]>> {
     return this.appUsersService.findAll();
   }
 
   @Get(':id/applications')
+  @ApiFindAppUserApplications()
   findAssignedApplications(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ResponseBody<AppUserApplicationRolesResponse[]>> {
@@ -50,6 +64,7 @@ export class AppUsersController {
 
   @Post(':id/applications')
   @HttpCode(HttpStatus.CREATED)
+  @ApiAssignAppUserApplication()
   assignApplication(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignApplicationDto,
@@ -59,6 +74,7 @@ export class AppUsersController {
 
   @Post(':id/roles')
   @HttpCode(HttpStatus.CREATED)
+  @ApiAssignAppUserRole()
   assignRole(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignRoleDto,
@@ -67,6 +83,7 @@ export class AppUsersController {
   }
 
   @Get(':id/connections')
+  @ApiFindAppUserConnections()
   findConnections(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ResponseBody<ConnectionResponse[]>> {
@@ -75,6 +92,7 @@ export class AppUsersController {
 
   @Post(':id/connections')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreateAppUserConnection()
   createConnection(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateConnectionDto,

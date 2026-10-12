@@ -8,6 +8,7 @@ export function setupSwagger(app: INestApplication): void {
     .setTitle('IAM API')
     .setDescription('Identity and access management API.')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   SwaggerModule.setup(

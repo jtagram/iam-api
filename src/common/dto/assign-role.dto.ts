@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { IsInt } from 'class-validator';
 
 /**
@@ -16,6 +17,11 @@ import { IsInt } from 'class-validator';
  * signal of intent.
  */
 export class AssignRoleDto {
+  @ApiProperty({
+    description:
+      'Identifier of the role to assign. The role determines the application.',
+    example: 3,
+  })
   @IsInt()
   roleId: number;
 }

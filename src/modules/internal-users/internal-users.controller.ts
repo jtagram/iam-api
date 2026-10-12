@@ -9,6 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { InternalUserAppEntity } from '../../common/database/internal-user/internal-user-app.entity';
 import { InternalUserRoleEntity } from '../../common/database/internal-user/internal-user-role.entity';
 import { Role } from '../../common/database/role/role.enum';
@@ -22,7 +23,18 @@ import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
 import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
 import { FindInternalUsersByRoleDto } from './dto/find-internal-users-by-role.dto';
+import {
+  ApiCreateInternalUser,
+  ApiFindAllInternalUsers,
+  ApiFindInternalUsersByRole,
+  ApiFindInternalUserApplications,
+  ApiAssignInternalUserApplication,
+  ApiAssignInternalUserRole,
+  ApiFindInternalUserConnections,
+  ApiCreateInternalUserConnection,
+} from './internal-users.swagger';
 
+@ApiTags('Internal users')
 @Controller('internal-users')
 @Roles(Role.ADMIN)
 export class InternalUsersController {
@@ -30,6 +42,7 @@ export class InternalUsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreateInternalUser()
   create(
     @Body() dto: CreateInternalUserDto,
   ): Promise<InternalUserCreatedResponse> {
@@ -37,11 +50,13 @@ export class InternalUsersController {
   }
 
   @Get()
+  @ApiFindAllInternalUsers()
   findAll(): Promise<InternalUserCreatedResponse[]> {
     return this.internalUsersService.findAll();
   }
 
   @Get('by-role')
+  @ApiFindInternalUsersByRole()
   findByApplicationAndRoles(
     @Query() query: FindInternalUsersByRoleDto,
   ): Promise<InternalUserCreatedResponse[]> {
@@ -49,6 +64,7 @@ export class InternalUsersController {
   }
 
   @Get(':id/applications')
+  @ApiFindInternalUserApplications()
   findAssignedApplications(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<InternalUserApplicationRolesResponse[]> {
@@ -57,6 +73,7 @@ export class InternalUsersController {
 
   @Post(':id/applications')
   @HttpCode(HttpStatus.CREATED)
+  @ApiAssignInternalUserApplication()
   assignApplication(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignApplicationDto,
@@ -66,6 +83,7 @@ export class InternalUsersController {
 
   @Post(':id/roles')
   @HttpCode(HttpStatus.CREATED)
+  @ApiAssignInternalUserRole()
   assignRole(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignRoleDto,
@@ -74,6 +92,7 @@ export class InternalUsersController {
   }
 
   @Get(':id/connections')
+  @ApiFindInternalUserConnections()
   findConnections(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ConnectionResponse[]> {
@@ -82,6 +101,7 @@ export class InternalUsersController {
 
   @Post(':id/connections')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreateInternalUserConnection()
   createConnection(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateConnectionDto,

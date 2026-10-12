@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
   OriginApplication,
   TargetApplication,
@@ -6,8 +7,10 @@ import {
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 import { Public } from '../../common/guards/public.decorator';
 import { LoginDto } from './dto/login.dto';
+import { ApiAppUserLogin } from './apps-users-login.swagger';
 import { AppUsersLoginService } from './apps-users-login.service';
 
+@ApiTags('Apps users')
 @Controller('apps-users')
 export class AppUsersLoginController {
   constructor(private readonly appUsersLoginService: AppUsersLoginService) {}
@@ -15,6 +18,7 @@ export class AppUsersLoginController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Public()
+  @ApiAppUserLogin()
   login(
     @Body() dto: LoginDto,
     @OriginApplication() originApplicationName: string,

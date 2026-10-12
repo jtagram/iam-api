@@ -6,13 +6,19 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ResponseBody } from '../../common/dto/response-body.dto';
 import { Role } from '../../common/database/role/role.enum';
 import { Roles } from '../../common/guards/roles.decorator';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { ApplicationsService } from './applications.service';
 import { ApplicationResponse } from './dto/application-response.dto';
+import {
+  ApiCreateApplication,
+  ApiFindAllApplications,
+} from './applications.swagger';
 
+@ApiTags('Applications')
 @Controller('applications')
 @Roles(Role.ADMIN)
 export class ApplicationsController {
@@ -20,6 +26,7 @@ export class ApplicationsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreateApplication()
   create(
     @Body() dto: CreateApplicationDto,
   ): Promise<ResponseBody<ApplicationResponse>> {
@@ -27,6 +34,7 @@ export class ApplicationsController {
   }
 
   @Get()
+  @ApiFindAllApplications()
   findAll(): Promise<ResponseBody<ApplicationResponse[]>> {
     return this.applicationsService.findAll();
   }
