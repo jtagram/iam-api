@@ -422,7 +422,7 @@ describe('POST /internal-users/login (e2e)', () => {
       expect(response.body).toEqual({
         statusCode: 404,
         error: 'Not Found',
-        message: 'Application not found',
+        message: 'Origin application not found',
       });
     });
 
@@ -431,7 +431,7 @@ describe('POST /internal-users/login (e2e)', () => {
         404,
       );
 
-      expect(response.body.message).toBe('Application not found');
+      expect(response.body.message).toBe('Target application not found');
     });
   });
 
@@ -446,7 +446,7 @@ describe('POST /internal-users/login (e2e)', () => {
       expect(response.body).toEqual({
         statusCode: 403,
         error: 'Forbidden',
-        message: 'No access to this application',
+        message: 'No access to the origin application',
       });
     });
 
@@ -457,7 +457,7 @@ describe('POST /internal-users/login (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('No access to this application');
+      expect(response.body.message).toBe('No access to the target application');
     });
 
     it('returns 403 when there is no connection between origin and target', async () => {
@@ -494,7 +494,7 @@ describe('POST /internal-users/login (e2e)', () => {
       expect(response.body).toEqual({
         statusCode: 403,
         error: 'Forbidden',
-        message: 'No access to this application',
+        message: 'No roles assigned in the target application',
       });
     });
 
