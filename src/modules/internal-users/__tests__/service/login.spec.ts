@@ -21,6 +21,7 @@ import { RolesRepository } from '../../../../common/database/role/roles.reposito
 import { ResponseLogin } from '../../../../common/dto/response-login.dto';
 import { JWT_KEY_ID } from '../../../../common/jwt/jwt-key-id';
 import { InternalUsersLoginService } from '../../internal-users-login.service';
+import { TokenPayload } from '../../../../../test/helpers/jwt-types';
 
 const ORIGIN = 'iam';
 const TARGET = 'ticket-hub';
@@ -80,12 +81,14 @@ describe('InternalUsersLoginService.login', () => {
       email: 'ada@example.com',
       password: secretHash,
     });
-    applications.findByName.mockImplementation(async (name: string) =>
-      name === ORIGIN
-        ? { id: 10, name: ORIGIN, description: 'Identity' }
-        : name === TARGET
-          ? { id: 20, name: TARGET, description: 'Tickets' }
-          : null,
+    applications.findByName.mockImplementation((name: string) =>
+      Promise.resolve(
+        name === ORIGIN
+          ? { id: 10, name: ORIGIN, description: 'Identity' }
+          : name === TARGET
+            ? { id: 20, name: TARGET, description: 'Tickets' }
+            : null,
+      ),
     );
     userApps.existsForInternalUserAndApplication.mockResolvedValue(true);
     connections.existsForInternalUserAndApplications.mockResolvedValue(true);
@@ -100,7 +103,7 @@ describe('InternalUsersLoginService.login', () => {
   });
 
   const decode = (token: string) =>
-    new JwtService({ publicKey: keys.publicKey }).verify(token, {
+    new JwtService({ publicKey: keys.publicKey }).verify<TokenPayload>(token, {
       algorithms: ['RS256'],
     });
 
@@ -130,16 +133,16 @@ describe('InternalUsersLoginService.login', () => {
 
     it('answers the same message for an unknown user and a wrong password', async () => {
       users.findByEmail.mockResolvedValueOnce(null);
-      const unknown = await service
+      const unknown = (await service
         .login(
           { email: 'ghost@example.com', password: 'right-secret' },
           ORIGIN,
           TARGET,
         )
-        .catch((e) => e);
-      const wrong = await service
+        .catch((e: unknown) => e)) as Error;
+      const wrong = (await service
         .login({ email: 'ada@example.com', password: 'wrong' }, ORIGIN, TARGET)
-        .catch((e) => e);
+        .catch((e: unknown) => e)) as Error;
 
       expect(unknown.message).toBe(wrong.message);
     });
@@ -244,7 +247,7 @@ describe('InternalUsersLoginService.login', () => {
 
       const header = JSON.parse(
         Buffer.from(access_token.split('.')[0], 'base64url').toString(),
-      );
+      ) as Record<string, unknown>;
       expect(header).toMatchObject({ alg: 'RS256', kid: JWT_KEY_ID });
     });
 

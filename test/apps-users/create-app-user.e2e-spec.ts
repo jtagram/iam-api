@@ -9,7 +9,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { AppUserEntity } from '../../src/common/database/app-user/app-user.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
+import { seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -17,10 +17,11 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { AppUserCreatedResponse } from '../../src/modules/apps-users/dto/app-user-created-response.dto';
 
 describe('POST /apps-users (e2e)', () => {
   let testApp: AppTestApp;
-  let iam: SeededIam;
 
   beforeAll(async () => {
     testApp = await createAppTestApp();
@@ -28,7 +29,7 @@ describe('POST /apps-users (e2e)', () => {
 
   beforeEach(async () => {
     await testApp.resetTables();
-    iam = await seedIamAdmin(testApp.dataSource);
+    await seedIamAdmin(testApp.dataSource);
   });
 
   afterAll(async () => {
@@ -77,8 +78,8 @@ describe('POST /apps-users (e2e)', () => {
     it('generates a clienteId of at most 15 url-safe characters and a 43 character secret', async () => {
       const response = await send().expect(201);
 
-      expect(response.body.data.clienteId).toMatch(/^[A-Za-z0-9_-]{1,15}$/);
-      expect(response.body.data.clienteSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(dataOf<AppUserCreatedResponse>(response).clienteId).toMatch(/^[A-Za-z0-9_-]{1,15}$/);
+      expect(dataOf<AppUserCreatedResponse>(response).clienteSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
     });
 
     it('persists the user storing only a bcrypt hash of the secret', async () => {
@@ -86,15 +87,15 @@ describe('POST /apps-users (e2e)', () => {
 
       const row = await testApp.dataSource
         .getRepository(AppUserEntity)
-        .findOneByOrFail({ id: response.body.data.id });
-      expect(row.clienteId).toBe(response.body.data.clienteId);
+        .findOneByOrFail({ id: dataOf<AppUserCreatedResponse>(response).id });
+      expect(row.clienteId).toBe(dataOf<AppUserCreatedResponse>(response).clienteId);
       expect(row.name).toBe('Billing service');
       expect(row.description).toBe('Calls the billing API');
-      expect(row.clienteSecret).not.toBe(response.body.data.clienteSecret);
+      expect(row.clienteSecret).not.toBe(dataOf<AppUserCreatedResponse>(response).clienteSecret);
       expect(row.clienteSecret).toMatch(/^\$2[aby]\$10\$/);
       expect(
         await bcrypt.compare(
-          response.body.data.clienteSecret,
+          dataOf<AppUserCreatedResponse>(response).clienteSecret,
           row.clienteSecret,
         ),
       ).toBe(true);
@@ -104,9 +105,9 @@ describe('POST /apps-users (e2e)', () => {
       const first = await send().expect(201);
       const second = await send().expect(201);
 
-      expect(second.body.data.clienteId).not.toBe(first.body.data.clienteId);
-      expect(second.body.data.clienteSecret).not.toBe(
-        first.body.data.clienteSecret,
+      expect(dataOf<AppUserCreatedResponse>(second).clienteId).not.toBe(dataOf<AppUserCreatedResponse>(first).clienteId);
+      expect(dataOf<AppUserCreatedResponse>(second).clienteSecret).not.toBe(
+        dataOf<AppUserCreatedResponse>(first).clienteSecret,
       );
       expect(await appUserCount()).toBe(2);
     });
@@ -121,9 +122,9 @@ describe('POST /apps-users (e2e)', () => {
         }),
       ).expect(201);
 
-      expect(response.body.data.clienteId).not.toBe('chosen-id');
-      expect(response.body.data.clienteSecret).not.toBe('chosen-secret');
-      expect(response.body.data.id).not.toBe(999);
+      expect(dataOf<AppUserCreatedResponse>(response).clienteId).not.toBe('chosen-id');
+      expect(dataOf<AppUserCreatedResponse>(response).clienteSecret).not.toBe('chosen-secret');
+      expect(dataOf<AppUserCreatedResponse>(response).id).not.toBe(999);
     });
 
     it('accepts a name of exactly 20 characters', async () => {
@@ -138,7 +139,7 @@ describe('POST /apps-users (e2e)', () => {
     it('returns 400 when the body is empty', async () => {
       const response = await send(adminAuthorization(), {}).expect(400);
 
-      expect(response.body.message).toEqual(
+      expect(bodyOf<ErrorBody>(response).message).toEqual(
         expect.arrayContaining([
           'name must be a string',
           'description must be a string',
@@ -152,7 +153,7 @@ describe('POST /apps-users (e2e)', () => {
         validBody({ name: 'n'.repeat(21) }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'name must be shorter than or equal to 20 characters',
       ]);
     });
@@ -163,7 +164,7 @@ describe('POST /apps-users (e2e)', () => {
         validBody({ description: 'd'.repeat(201) }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'description must be shorter than or equal to 200 characters',
       ]);
     });
@@ -193,13 +194,13 @@ describe('POST /apps-users (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -207,13 +208,13 @@ describe('POST /apps-users (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -221,7 +222,7 @@ describe('POST /apps-users (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -231,7 +232,7 @@ describe('POST /apps-users (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -239,7 +240,7 @@ describe('POST /apps-users (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

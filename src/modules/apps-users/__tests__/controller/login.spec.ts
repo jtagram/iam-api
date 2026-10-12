@@ -74,7 +74,7 @@ describe('AppUsersLoginController.login', () => {
       'design:paramtypes',
       AppUsersLoginController.prototype,
       'login',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(LoginDto);

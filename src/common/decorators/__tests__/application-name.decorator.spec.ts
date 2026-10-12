@@ -12,8 +12,12 @@ function extractFactory(): Factory {
   class Host {
     handler(@OriginApplication() _name: string) {}
   }
-  const metadata = Reflect.getMetadata(ROUTE_ARGS_METADATA, Host, 'handler');
-  return Object.values<{ factory: Factory }>(metadata)[0].factory;
+  const metadata = Reflect.getMetadata(
+    ROUTE_ARGS_METADATA,
+    Host,
+    'handler',
+  ) as Record<string, { factory: Factory }>;
+  return Object.values(metadata)[0].factory;
 }
 
 function contextWith(headers: Record<string, unknown>): ExecutionContext {

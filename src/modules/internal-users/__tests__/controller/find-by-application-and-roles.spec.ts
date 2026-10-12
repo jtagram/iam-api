@@ -75,7 +75,7 @@ describe('InternalUsersController.findByApplicationAndRoles', () => {
       'design:paramtypes',
       InternalUsersController.prototype,
       'findByApplicationAndRoles',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(FindInternalUsersByRoleDto);

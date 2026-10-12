@@ -13,19 +13,21 @@ import {
   createRole,
   grantAppUserApplication,
   grantAppUserRole,
+  SeededIam,
+  seedIamAdmin,
 } from '../helpers/seed';
-import { TEST_JWT_EXPIRES_IN_SECONDS } from '../helpers/app-test-app';
+import {
+  TEST_JWT_EXPIRES_IN_SECONDS,
+  AppTestApp,
+  createAppTestApp,
+} from '../helpers/app-test-app';
 import { verifyWithPublishedKey } from '../helpers/jwks';
 import { AppUserEntity } from '../../src/common/database/app-user/app-user.entity';
-import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
-import {
-  adminAuthorization,
-  authorizationHeaderFor,
-  authorizationHeaderForClaims,
-  authorizationSignedByAnotherKey,
-  expiredAuthorization,
-} from '../helpers/test-auth';
+import { adminAuthorization } from '../helpers/test-auth';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { AppUserCreatedResponse } from '../../src/modules/apps-users/dto/app-user-created-response.dto';
+import { ResponseBody } from '../../src/common/dto/response-body.dto';
+import { ResponseLogin } from '../../src/common/dto/response-login.dto';
 
 describe('POST /apps-users/login (e2e)', () => {
   let testApp: AppTestApp;
@@ -106,8 +108,8 @@ describe('POST /apps-users/login (e2e)', () => {
     it('returns 200 with only an access_token', async () => {
       const response = await send().expect(200);
 
-      expect(Object.keys(response.body)).toEqual(['access_token']);
-      expect(response.body.access_token.split('.')).toHaveLength(3);
+      expect(Object.keys(bodyOf<object>(response))).toEqual(['access_token']);
+      expect(bodyOf<ResponseLogin>(response).access_token.split('.')).toHaveLength(3);
     });
 
     it('needs no Authorization header and ignores an invalid one (public route)', async () => {
@@ -119,7 +121,7 @@ describe('POST /apps-users/login (e2e)', () => {
 
       const verified = await verifyWithPublishedKey(
         testApp,
-        response.body.access_token,
+        bodyOf<ResponseLogin>(response).access_token,
       );
       expect(verified.header.alg).toBe('RS256');
       expect(verified.header.kid).toBe('iam-api-rsa-1');
@@ -130,7 +132,7 @@ describe('POST /apps-users/login (e2e)', () => {
 
       const { payload } = await verifyWithPublishedKey(
         testApp,
-        response.body.access_token,
+        bodyOf<ResponseLogin>(response).access_token,
       );
       expect(payload).toEqual({
         sub: appUserId,
@@ -154,7 +156,7 @@ describe('POST /apps-users/login (e2e)', () => {
 
       const { payload } = await verifyWithPublishedKey(
         testApp,
-        response.body.access_token,
+        bodyOf<ResponseLogin>(response).access_token,
       );
       expect(JSON.stringify(payload)).not.toContain('$2');
       expect(payload).not.toHaveProperty('password');
@@ -168,7 +170,7 @@ describe('POST /apps-users/login (e2e)', () => {
 
       const { payload } = await verifyWithPublishedKey(
         testApp,
-        response.body.access_token,
+        bodyOf<ResponseLogin>(response).access_token,
       );
       expect(payload.exp - payload.iat).toBe(TEST_JWT_EXPIRES_IN_SECONDS);
       expect(payload.iat).toBeGreaterThanOrEqual(before - 1);
@@ -182,7 +184,7 @@ describe('POST /apps-users/login (e2e)', () => {
 
       const { payload } = await verifyWithPublishedKey(
         testApp,
-        response.body.access_token,
+        bodyOf<ResponseLogin>(response).access_token,
       );
       expect(
         payload.apps.application.roles
@@ -203,9 +205,9 @@ describe('POST /apps-users/login (e2e)', () => {
       const admin = await testApp
         .http()
         .get('/applications')
-        .set('Authorization', `Bearer ${response.body.access_token}`)
+        .set('Authorization', `Bearer ${bodyOf<ResponseLogin>(response).access_token}`)
         .expect(403);
-      expect(admin.body.message).toBe(
+      expect(bodyOf<ErrorBody>(admin).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -223,10 +225,10 @@ describe('POST /apps-users/login (e2e)', () => {
       const response = await testApp
         .http()
         .get('/applications')
-        .set('Authorization', `Bearer ${login.body.access_token}`)
+        .set('Authorization', `Bearer ${bodyOf<ResponseLogin>(login).access_token}`)
         .expect(200);
 
-      expect(response.body.msg).toBe('Applications retrieved successfully');
+      expect(bodyOf<ResponseBody<unknown>>(response).msg).toBe('Applications retrieved successfully');
     });
 
     it('accepts the credentials returned by POST /apps-users', async () => {
@@ -236,7 +238,7 @@ describe('POST /apps-users/login (e2e)', () => {
         .set('Authorization', adminAuthorization())
         .send({ name: 'Generated', description: 'Generated user' })
         .expect(201);
-      const { id, clienteId, clienteSecret } = created.body.data;
+      const { id, clienteId, clienteSecret } = dataOf<AppUserCreatedResponse>(created);
       await grantAppUserApplication(
         testApp.dataSource,
         id,
@@ -253,7 +255,7 @@ describe('POST /apps-users/login (e2e)', () => {
 
       const response = await send({ clienteId, clienteSecret }).expect(200);
 
-      expect(response.body.access_token).toEqual(expect.any(String));
+      expect(bodyOf<ResponseLogin>(response).access_token).toEqual(expect.any(String));
     });
 
     it('rejects the stored bcrypt hash used as the secret', async () => {
@@ -302,7 +304,7 @@ describe('POST /apps-users/login (e2e)', () => {
         target: 'nope',
       }).expect(401);
 
-      expect(response.body.message).toBe('Invalid credentials');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid credentials');
     });
 
     it('does not issue a token for a wrong secret', async () => {
@@ -318,7 +320,7 @@ describe('POST /apps-users/login (e2e)', () => {
         400,
       );
 
-      expect(response.body.message).toEqual(
+      expect(bodyOf<ErrorBody>(response).message).toEqual(
         expect.arrayContaining(['clienteId must be a string']),
       );
     });
@@ -329,7 +331,7 @@ describe('POST /apps-users/login (e2e)', () => {
         clienteSecret: '',
       }).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'clienteSecret should not be empty',
       ]);
     });
@@ -340,7 +342,7 @@ describe('POST /apps-users/login (e2e)', () => {
         clienteSecret: 'client-secret-1',
       }).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'clienteId must be shorter than or equal to 15 characters',
       ]);
     });
@@ -352,7 +354,7 @@ describe('POST /apps-users/login (e2e)', () => {
     it('returns 400 when x-origin-application is missing', async () => {
       const response = await send(CREDENTIALS, { origin: null }).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'x-origin-application header is required',
       );
     });
@@ -360,7 +362,7 @@ describe('POST /apps-users/login (e2e)', () => {
     it('returns 400 when x-target-application is missing', async () => {
       const response = await send(CREDENTIALS, { target: null }).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'x-target-application header is required',
       );
     });
@@ -368,7 +370,7 @@ describe('POST /apps-users/login (e2e)', () => {
     it('returns 400 when x-origin-application is blank', async () => {
       const response = await send(CREDENTIALS, { origin: '   ' }).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'x-origin-application header is required',
       );
     });
@@ -376,7 +378,7 @@ describe('POST /apps-users/login (e2e)', () => {
     it('returns 400 when x-target-application is blank', async () => {
       const response = await send(CREDENTIALS, { target: '   ' }).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'x-target-application header is required',
       );
     });
@@ -400,7 +402,7 @@ describe('POST /apps-users/login (e2e)', () => {
         404,
       );
 
-      expect(response.body.message).toBe('Target application not found');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Target application not found');
     });
   });
 
@@ -426,7 +428,7 @@ describe('POST /apps-users/login (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('No access to the target application');
+      expect(bodyOf<ErrorBody>(response).message).toBe('No access to the target application');
     });
 
     it('returns 403 when there is no connection between origin and target', async () => {
@@ -450,7 +452,7 @@ describe('POST /apps-users/login (e2e)', () => {
         target: 'iam',
       }).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'No connection allowed between these applications',
       );
     });

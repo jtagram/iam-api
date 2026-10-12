@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { IS_PUBLIC_KEY, Public } from '../public.decorator';
+import { prototypeMethod } from '../../../../test/helpers/mocks';
 
 describe('Public', () => {
   it('exposes the metadata key used by the guards', () => {
@@ -13,7 +14,10 @@ describe('Public', () => {
     }
 
     expect(
-      Reflect.getMetadata(IS_PUBLIC_KEY, Controller.prototype.handler),
+      Reflect.getMetadata(
+        IS_PUBLIC_KEY,
+        prototypeMethod(Controller.prototype, 'handler'),
+      ),
     ).toBe(true);
   });
 
@@ -33,7 +37,10 @@ describe('Public', () => {
     }
 
     expect(
-      Reflect.getMetadata(IS_PUBLIC_KEY, Controller.prototype.closed),
+      Reflect.getMetadata(
+        IS_PUBLIC_KEY,
+        prototypeMethod(Controller.prototype, 'closed'),
+      ),
     ).toBeUndefined();
   });
 });

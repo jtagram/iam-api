@@ -1,5 +1,6 @@
 import { createPublicKey, JsonWebKey } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
+import { TokenPayload } from './jwt-types';
 import { AppTestApp } from './app-test-app';
 
 export interface Jwks {
@@ -8,7 +9,7 @@ export interface Jwks {
 
 export interface DecodedToken {
   header: { alg: string; kid?: string; typ?: string };
-  payload: Record<string, any>;
+  payload: TokenPayload;
 }
 
 /** Reads the public key set the way a downstream service does. */
@@ -29,7 +30,9 @@ export async function verifyWithPublishedKey(
   token: string,
 ): Promise<DecodedToken> {
   const jwtService = new JwtService();
-  const decoded = jwtService.decode(token, { complete: true }) as DecodedToken;
+  const decoded = jwtService.decode<DecodedToken>(token, {
+    complete: true,
+  });
   const jwks = await fetchJwks(testApp);
   const jwk = jwks.keys.find((key) => key.kid === decoded.header.kid);
   if (!jwk) {
@@ -39,7 +42,7 @@ export async function verifyWithPublishedKey(
     type: 'spki',
     format: 'pem',
   });
-  const payload = jwtService.verify(token, {
+  const payload = jwtService.verify<TokenPayload>(token, {
     publicKey: publicKey as string,
     algorithms: ['RS256'],
   });

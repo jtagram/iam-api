@@ -37,8 +37,8 @@ describe('InternalUsersService.assignApplication', () => {
     applications.findById.mockResolvedValue({ id: 5 });
     userApps.existsForInternalUserAndApplication.mockResolvedValue(false);
     userApps.createAssignment.mockImplementation(
-      async (entity: InternalUserAppEntity) =>
-        Object.assign(entity, { id: 70 }),
+      (entity: InternalUserAppEntity) =>
+        Promise.resolve(Object.assign(entity, { id: 70 })),
     );
   });
 
@@ -86,7 +86,7 @@ describe('InternalUsersService.assignApplication', () => {
   it('persists an assignment for the user and the application', async () => {
     await service.assignApplication(1, dto);
 
-    const entity = userApps.createAssignment.mock.calls[0][0];
+    const entity = userApps.createAssignment.mock.calls[0][0] as InternalUserAppEntity;
     expect(entity).toBeInstanceOf(InternalUserAppEntity);
     expect(entity).toMatchObject({ internalUserId: 1, applicationId: 5 });
   });

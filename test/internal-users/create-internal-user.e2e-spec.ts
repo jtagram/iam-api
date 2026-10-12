@@ -12,7 +12,7 @@ import { InternalUserEntity } from '../../src/common/database/internal-user/inte
 import { InternalUsersRepository } from '../../src/common/database/internal-user/internal-users.repository';
 import { createBarrier } from '../helpers/concurrency';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
+import { seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -20,10 +20,12 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, ErrorBody } from '../helpers/response-types';
+import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
+import { prototypeMethod } from '../helpers/mocks';
 
 describe('POST /internal-users (e2e)', () => {
   let testApp: AppTestApp;
-  let iam: SeededIam;
 
   beforeAll(async () => {
     testApp = await createAppTestApp();
@@ -31,7 +33,7 @@ describe('POST /internal-users (e2e)', () => {
 
   beforeEach(async () => {
     await testApp.resetTables();
-    iam = await seedIamAdmin(testApp.dataSource);
+    await seedIamAdmin(testApp.dataSource);
   });
 
   afterAll(async () => {
@@ -80,7 +82,7 @@ describe('POST /internal-users (e2e)', () => {
 
       const row = await testApp.dataSource
         .getRepository(InternalUserEntity)
-        .findOneByOrFail({ id: response.body.id });
+        .findOneByOrFail({ id: bodyOf<InternalUserCreatedResponse>(response).id });
       expect(row.email).toBe('jane.doe@example.com');
       expect(row.name).toBe('Jane');
       expect(row.lastname).toBe('Doe');
@@ -98,7 +100,7 @@ describe('POST /internal-users (e2e)', () => {
         validBody({ id: 999, role: 'ADMIN' }),
       ).expect(201);
 
-      expect(response.body.id).not.toBe(999);
+      expect(bodyOf<InternalUserCreatedResponse>(response).id).not.toBe(999);
       expect(response.body).not.toHaveProperty('role');
     });
 
@@ -123,7 +125,7 @@ describe('POST /internal-users (e2e)', () => {
     it('returns 400 when the body is empty', async () => {
       const response = await send(adminAuthorization(), {}).expect(400);
 
-      expect(response.body.message).toEqual(
+      expect(bodyOf<ErrorBody>(response).message).toEqual(
         expect.arrayContaining([
           'name must be a string',
           'lastname must be a string',
@@ -139,7 +141,7 @@ describe('POST /internal-users (e2e)', () => {
         validBody({ email: 'not-an-email' }),
       ).expect(400);
 
-      expect(response.body.message).toEqual(['email must be an email']);
+      expect(bodyOf<ErrorBody>(response).message).toEqual(['email must be an email']);
     });
 
     it('returns 400 when the email is longer than 30 characters', async () => {
@@ -148,7 +150,7 @@ describe('POST /internal-users (e2e)', () => {
         validBody({ email: `${'e'.repeat(25)}@example.com` }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'email must be shorter than or equal to 30 characters',
       ]);
     });
@@ -159,7 +161,7 @@ describe('POST /internal-users (e2e)', () => {
         validBody({ password: 'short' }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'password must be longer than or equal to 8 characters',
       ]);
     });
@@ -170,7 +172,7 @@ describe('POST /internal-users (e2e)', () => {
         validBody({ password: 'p'.repeat(73) }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'password must be shorter than or equal to 72 characters',
       ]);
     });
@@ -181,7 +183,7 @@ describe('POST /internal-users (e2e)', () => {
         validBody({ name: 'n'.repeat(16), lastname: 'l'.repeat(16) }),
       ).expect(400);
 
-      expect(response.body.message).toEqual(
+      expect(bodyOf<ErrorBody>(response).message).toEqual(
         expect.arrayContaining([
           'name must be shorter than or equal to 15 characters',
           'lastname must be shorter than or equal to 15 characters',
@@ -230,7 +232,10 @@ describe('POST /internal-users (e2e)', () => {
 
     it('answers 500 with the generic message to the loser of a concurrent duplicate creation and persists a single row (documents current behavior)', async () => {
       const barrier = createBarrier(2);
-      const original = InternalUsersRepository.prototype.findByEmail;
+      const original = prototypeMethod(
+        InternalUsersRepository.prototype,
+        'findByEmail',
+      );
       const spy = jest
         .spyOn(InternalUsersRepository.prototype, 'findByEmail')
         .mockImplementation(async function (
@@ -238,7 +243,7 @@ describe('POST /internal-users (e2e)', () => {
           email: string,
         ) {
           await barrier.arrive();
-          return original.call(this, email);
+          return Reflect.apply(original, this, [email]);
         });
 
       try {
@@ -274,13 +279,13 @@ describe('POST /internal-users (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -288,13 +293,13 @@ describe('POST /internal-users (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -302,7 +307,7 @@ describe('POST /internal-users (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -312,7 +317,7 @@ describe('POST /internal-users (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -320,7 +325,7 @@ describe('POST /internal-users (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

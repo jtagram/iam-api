@@ -21,6 +21,7 @@ import { RolesRepository } from '../../../../common/database/role/roles.reposito
 import { ResponseLogin } from '../../../../common/dto/response-login.dto';
 import { JWT_KEY_ID } from '../../../../common/jwt/jwt-key-id';
 import { AppUsersLoginService } from '../../apps-users-login.service';
+import { TokenPayload } from '../../../../../test/helpers/jwt-types';
 
 const ORIGIN = 'iam';
 const TARGET = 'ticket-hub';
@@ -78,12 +79,14 @@ describe('AppUsersLoginService.login', () => {
       clienteId: 'client-1',
       clienteSecret: secretHash,
     });
-    applications.findByName.mockImplementation(async (name: string) =>
-      name === ORIGIN
-        ? { id: 10, name: ORIGIN, description: 'Identity' }
-        : name === TARGET
-          ? { id: 20, name: TARGET, description: 'Tickets' }
-          : null,
+    applications.findByName.mockImplementation((name: string) =>
+      Promise.resolve(
+        name === ORIGIN
+          ? { id: 10, name: ORIGIN, description: 'Identity' }
+          : name === TARGET
+            ? { id: 20, name: TARGET, description: 'Tickets' }
+            : null,
+      ),
     );
     userApps.existsForAppUserAndApplication.mockResolvedValue(true);
     connections.existsForAppUserAndApplications.mockResolvedValue(true);
@@ -96,7 +99,7 @@ describe('AppUsersLoginService.login', () => {
   });
 
   const decode = (token: string) =>
-    new JwtService({ publicKey: keys.publicKey }).verify(token, {
+    new JwtService({ publicKey: keys.publicKey }).verify<TokenPayload>(token, {
       algorithms: ['RS256'],
     });
 
@@ -126,20 +129,20 @@ describe('AppUsersLoginService.login', () => {
 
     it('answers the same message for an unknown user and a wrong clienteSecret', async () => {
       users.findByClienteId.mockResolvedValueOnce(null);
-      const unknown = await service
+      const unknown = (await service
         .login(
           { clienteId: 'ghost', clienteSecret: 'right-secret' },
           ORIGIN,
           TARGET,
         )
-        .catch((e) => e);
-      const wrong = await service
+        .catch((e: unknown) => e)) as Error;
+      const wrong = (await service
         .login(
           { clienteId: 'client-1', clienteSecret: 'wrong' },
           ORIGIN,
           TARGET,
         )
-        .catch((e) => e);
+        .catch((e: unknown) => e)) as Error;
 
       expect(unknown.message).toBe(wrong.message);
     });
@@ -254,7 +257,7 @@ describe('AppUsersLoginService.login', () => {
 
       const header = JSON.parse(
         Buffer.from(access_token.split('.')[0], 'base64url').toString(),
-      );
+      ) as Record<string, unknown>;
       expect(header).toMatchObject({ alg: 'RS256', kid: JWT_KEY_ID });
     });
 

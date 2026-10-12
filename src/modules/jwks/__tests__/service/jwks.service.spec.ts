@@ -8,6 +8,7 @@ import {
 } from '../../../../../test/helpers/rsa-keys';
 import { JWT_KEY_ID } from '../../../../common/jwt/jwt-key-id';
 import { JwksService } from '../../jwks.service';
+import { prototypeMethod } from '../../../../../test/helpers/mocks';
 
 function configWith(publicKey: string | undefined): ConfigService {
   return {
@@ -46,7 +47,7 @@ describe('JwksService', () => {
 
       new JwksService(config);
 
-      expect(config.get).toHaveBeenCalledWith('JWT_PUBLIC_KEY');
+      expect(prototypeMethod(config, 'get')).toHaveBeenCalledWith('JWT_PUBLIC_KEY');
     });
   });
 
@@ -110,7 +111,7 @@ describe('JwksService', () => {
       const verified = new JwtService({
         publicKey: publishedPem,
         verifyOptions: { algorithms: ['RS256'] },
-      }).verify(token);
+      }).verify<{ sub: number }>(token);
 
       expect(verified.sub).toBe(1);
     });

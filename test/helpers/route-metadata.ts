@@ -9,8 +9,16 @@ import { RouteParamtypes } from '@nestjs/common/enums/route-paramtypes.enum';
 import { IS_PUBLIC_KEY } from '../../src/common/guards/public.decorator';
 import { ROLES_KEY } from '../../src/common/guards/roles.decorator';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-type Controller = Function;
+type Controller = abstract new (...args: never[]) => unknown;
+
+/** `Reflect.getMetadata` returns `any`; this pins the expected type once. */
+function metadataOf<T>(key: unknown, target: object, property?: string): T {
+  return (
+    property === undefined
+      ? Reflect.getMetadata(key, target)
+      : Reflect.getMetadata(key, target, property)
+  ) as T;
+}
 
 export interface RouteInfo {
   path: string;
@@ -22,23 +30,23 @@ export interface RouteInfo {
 
 /** Reads the decorators of one controller handler (route, verb, status, guards metadata). */
 export function routeOf(controller: Controller, handler: string): RouteInfo {
-  const target = controller.prototype[handler];
+  const target = (controller.prototype as Record<string, object>)[handler];
   return {
-    path: Reflect.getMetadata(PATH_METADATA, target),
-    method: Reflect.getMetadata(METHOD_METADATA, target),
-    httpCode: Reflect.getMetadata(HTTP_CODE_METADATA, target),
+    path: metadataOf<string>(PATH_METADATA, target),
+    method: metadataOf<RequestMethod>(METHOD_METADATA, target),
+    httpCode: metadataOf<number | undefined>(HTTP_CODE_METADATA, target),
     isPublic:
-      Reflect.getMetadata(IS_PUBLIC_KEY, target) ??
-      Reflect.getMetadata(IS_PUBLIC_KEY, controller),
+      metadataOf<boolean | undefined>(IS_PUBLIC_KEY, target) ??
+      metadataOf<boolean | undefined>(IS_PUBLIC_KEY, controller),
     roles:
-      Reflect.getMetadata(ROLES_KEY, target) ??
-      Reflect.getMetadata(ROLES_KEY, controller),
+      metadataOf<unknown>(ROLES_KEY, target) ??
+      metadataOf<unknown>(ROLES_KEY, controller),
   };
 }
 
 /** Base path of the controller (`@Controller('x')`). */
 export function basePathOf(controller: Controller): string {
-  return Reflect.getMetadata(PATH_METADATA, controller);
+  return metadataOf<string>(PATH_METADATA, controller);
 }
 
 export interface ParamInfo {
@@ -53,7 +61,11 @@ function paramsOf(
   type: RouteParamtypes,
 ): ParamInfo[] {
   const metadata: Record<string, ParamInfo> =
-    Reflect.getMetadata(ROUTE_ARGS_METADATA, controller, handler) ?? {};
+    metadataOf<Record<string, ParamInfo> | undefined>(
+      ROUTE_ARGS_METADATA,
+      controller,
+      handler,
+    ) ?? {};
   return Object.entries(metadata)
     .filter(([key]) => key.startsWith(`${type}:`))
     .map(([, value]) => value);
@@ -74,7 +86,14 @@ export function customParamsOf(
   const metadata: Record<
     string,
     ParamInfo & { factory: (data: unknown, ctx: unknown) => unknown }
-  > = Reflect.getMetadata(ROUTE_ARGS_METADATA, controller, handler) ?? {};
+  > =
+    metadataOf<
+      | Record<
+          string,
+          ParamInfo & { factory: (data: unknown, ctx: unknown) => unknown }
+        >
+      | undefined
+    >(ROUTE_ARGS_METADATA, controller, handler) ?? {};
   return Object.entries(metadata)
     .filter(([key]) => key.includes('__customRouteArgs__'))
     .map(([, value]) => value)

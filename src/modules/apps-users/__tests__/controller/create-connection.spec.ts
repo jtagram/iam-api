@@ -74,7 +74,7 @@ describe('AppUsersController.createConnection', () => {
       'design:paramtypes',
       AppUsersController.prototype,
       'createConnection',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(CreateConnectionDto);

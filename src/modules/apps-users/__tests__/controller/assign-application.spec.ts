@@ -74,7 +74,7 @@ describe('AppUsersController.assignApplication', () => {
       'design:paramtypes',
       AppUsersController.prototype,
       'assignApplication',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(AssignApplicationDto);

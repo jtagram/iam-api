@@ -11,9 +11,10 @@ import {
   createInternalUser,
   createRole,
   grantInternalUserRole,
+  SeededIam,
+  seedIamAdmin,
 } from '../helpers/seed';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -21,6 +22,8 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, ErrorBody } from '../helpers/response-types';
+import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
 
 describe('GET /internal-users/by-role (e2e)', () => {
   let testApp: AppTestApp;
@@ -42,7 +45,6 @@ describe('GET /internal-users/by-role (e2e)', () => {
   let billingId: number;
   let editor: Awaited<ReturnType<typeof createRole>>;
   let payer: Awaited<ReturnType<typeof createRole>>;
-  let aliceId: number;
   let bobId: number;
 
   function send(
@@ -81,7 +83,6 @@ describe('GET /internal-users/by-role (e2e)', () => {
       email: 'carol@example.com',
       name: 'Carol',
     });
-    aliceId = alice.id;
     bobId = bob.id;
     await grantInternalUserRole(ds, alice.id, editor);
     await grantInternalUserRole(ds, bob.id, iam.adminRole);
@@ -115,7 +116,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         roles: 'ADMIN,EDITOR',
       }).expect(200);
 
-      expect(emails(response.body)).toEqual([
+      expect(emails(bodyOf<InternalUserCreatedResponse[]>(response))).toEqual([
         'admin@example.com',
         'alice@example.com',
         'bob@example.com',
@@ -128,7 +129,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         roles: ' EDITOR , ,',
       }).expect(200);
 
-      expect(emails(response.body)).toEqual([
+      expect(emails(bodyOf<InternalUserCreatedResponse[]>(response))).toEqual([
         'alice@example.com',
         'bob@example.com',
       ]);
@@ -140,7 +141,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         roles: 'ADMIN',
       }).expect(200);
 
-      expect(emails(response.body)).toEqual(['carol@example.com']);
+      expect(emails(bodyOf<InternalUserCreatedResponse[]>(response))).toEqual(['carol@example.com']);
     });
 
     it('returns an empty array when no role matches', async () => {
@@ -171,7 +172,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
       const response = await send().expect(200);
 
       expect(JSON.stringify(response.body)).not.toContain('$2');
-      expect(Object.keys(response.body[0]).sort()).toEqual([
+      expect(Object.keys(bodyOf<InternalUserCreatedResponse[]>(response)[0]).sort()).toEqual([
         'email',
         'id',
         'lastname',
@@ -186,7 +187,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         roles: 'ADMIN',
       }).expect(400);
 
-      expect(response.body.message).toEqual(
+      expect(bodyOf<ErrorBody>(response).message).toEqual(
         expect.arrayContaining(['applicationName should not be empty']),
       );
     });
@@ -196,7 +197,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         applicationName: 'iam',
       }).expect(400);
 
-      expect(response.body.message).toEqual(
+      expect(bodyOf<ErrorBody>(response).message).toEqual(
         expect.arrayContaining(['roles should not be empty']),
       );
     });
@@ -207,7 +208,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         roles: 'ADMIN',
       }).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'applicationName must be shorter than or equal to 15 characters',
       ]);
     });
@@ -247,13 +248,13 @@ describe('GET /internal-users/by-role (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -261,13 +262,13 @@ describe('GET /internal-users/by-role (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -275,7 +276,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -285,7 +286,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -293,7 +294,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

@@ -32,7 +32,7 @@ describe('InternalUsersService.create', () => {
     );
     repository.findByEmail.mockResolvedValue(null);
     repository.createInternalUser.mockImplementation(
-      async (entity: InternalUserEntity) => Object.assign(entity, { id: 4 }),
+      (entity: InternalUserEntity) => Promise.resolve(Object.assign(entity, { id: 4 })),
     );
   });
 
@@ -56,7 +56,7 @@ describe('InternalUsersService.create', () => {
   it('persists an entity with the dto data and a hashed password', async () => {
     await service.create(dto);
 
-    const entity = repository.createInternalUser.mock.calls[0][0];
+    const entity = repository.createInternalUser.mock.calls[0][0] as InternalUserEntity;
     expect(entity).toBeInstanceOf(InternalUserEntity);
     expect(entity).toMatchObject({
       name: 'Ada',
@@ -68,7 +68,7 @@ describe('InternalUsersService.create', () => {
   it('stores a bcrypt hash with cost 10, never the plaintext password', async () => {
     await service.create(dto);
 
-    const entity = repository.createInternalUser.mock.calls[0][0];
+    const entity = repository.createInternalUser.mock.calls[0][0] as InternalUserEntity;
     expect(entity.password).not.toBe('correct-horse');
     expect(entity.password).toMatch(/^\$2[aby]\$10\$/);
     await expect(

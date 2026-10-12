@@ -50,8 +50,8 @@ describe('InternalUsersService.createConnection', () => {
     userApps.existsForInternalUserAndApplication.mockResolvedValue(true);
     connections.existsForInternalUserAndApplications.mockResolvedValue(false);
     connections.createConnection.mockImplementation(
-      async (entity: InternalUserConnectionEntity) =>
-        Object.assign(entity, { id: 90 }),
+      (entity: InternalUserConnectionEntity) =>
+        Promise.resolve(Object.assign(entity, { id: 90 })),
     );
   });
 
@@ -137,7 +137,7 @@ describe('InternalUsersService.createConnection', () => {
   it('persists a connection for the user, origin and destination', async () => {
     await service.createConnection(1, dto);
 
-    const entity = connections.createConnection.mock.calls[0][0];
+    const entity = connections.createConnection.mock.calls[0][0] as InternalUserConnectionEntity;
     expect(entity).toBeInstanceOf(InternalUserConnectionEntity);
     expect(entity).toMatchObject({
       internalUserId: 1,
@@ -158,7 +158,7 @@ describe('InternalUsersService.createConnection', () => {
 
   it('allows the reverse direction as a separate connection', async () => {
     connections.existsForInternalUserAndApplications.mockImplementation(
-      async (_user: number, origin: number) => origin === 10,
+      (_user: number, origin: number) => Promise.resolve(origin === 10),
     );
     applications.findByIds.mockResolvedValue([
       { id: 10, name: 'iam' },

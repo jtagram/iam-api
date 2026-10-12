@@ -9,20 +9,19 @@ import {
 import { createPublicKey } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { fetchJwks, verifyWithPublishedKey } from '../helpers/jwks';
-import { signToken, claimsFor, TEST_PUBLIC_KEY } from '../helpers/test-auth';
-import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
-  adminAuthorization,
-  authorizationHeaderFor,
-  authorizationHeaderForClaims,
+  signToken,
+  claimsFor,
+  TEST_PUBLIC_KEY,
   authorizationSignedByAnotherKey,
-  expiredAuthorization,
 } from '../helpers/test-auth';
+import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
+import { seedIamAdmin } from '../helpers/seed';
+import { bodyOf } from '../helpers/response-types';
+import { JwksResponse } from '../../src/modules/jwks/dto/jwks-response.dto';
 
 describe('GET /.well-known/jwks.json (e2e)', () => {
   let testApp: AppTestApp;
-  let iam: SeededIam;
 
   beforeAll(async () => {
     testApp = await createAppTestApp();
@@ -30,7 +29,7 @@ describe('GET /.well-known/jwks.json (e2e)', () => {
 
   beforeEach(async () => {
     await testApp.resetTables();
-    iam = await seedIamAdmin(testApp.dataSource);
+    await seedIamAdmin(testApp.dataSource);
   });
 
   afterAll(async () => {
@@ -72,14 +71,14 @@ describe('GET /.well-known/jwks.json (e2e)', () => {
     const response = await send().expect(200);
 
     const expected = createPublicKey(TEST_PUBLIC_KEY).export({ format: 'jwk' });
-    expect(response.body.keys[0].n).toBe(expected.n);
-    expect(response.body.keys[0].e).toBe(expected.e);
+    expect(bodyOf<JwksResponse>(response).keys[0].n).toBe(expected.n);
+    expect(bodyOf<JwksResponse>(response).keys[0].e).toBe(expected.e);
   });
 
   it('never publishes private key material', async () => {
     const response = await send().expect(200);
 
-    const jwk = response.body.keys[0];
+    const jwk = bodyOf<JwksResponse>(response).keys[0];
     for (const privateMember of ['d', 'p', 'q', 'dp', 'dq', 'qi']) {
       expect(jwk).not.toHaveProperty(privateMember);
     }
@@ -127,7 +126,7 @@ describe('GET /.well-known/jwks.json (e2e)', () => {
     }) as string;
 
     expect(() =>
-      new JwtService().verify(token, { publicKey, algorithms: ['RS256'] }),
+      new JwtService().verify<object>(token, { publicKey, algorithms: ['RS256'] }),
     ).not.toThrow();
   });
 

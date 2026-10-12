@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { PATH_METADATA } from '@nestjs/common/constants';
 import { InternalUsersController } from '../../internal-users.controller';
+import { prototypeMethod } from '../../../../../test/helpers/mocks';
 
 describe('InternalUsersController route order', () => {
   it('declares GET by-role before any ":id" route so it is not captured as an id', () => {
@@ -10,7 +11,10 @@ describe('InternalUsersController route order', () => {
         name,
         path: Reflect.getMetadata(
           PATH_METADATA,
-          InternalUsersController.prototype[name as 'create'],
+          prototypeMethod(
+            InternalUsersController.prototype,
+            name as 'create',
+          ),
         ) as string,
       }));
     const byRole = order.findIndex((route) => route.path === 'by-role');

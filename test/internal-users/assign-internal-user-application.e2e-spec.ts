@@ -6,17 +6,9 @@ import {
   expect,
   it,
 } from '@jest/globals';
-import {
-  createInternalUser,
-  connectInternalUser,
-  createApplication,
-  createRole,
-  grantInternalUserApplication,
-  grantInternalUserRole,
-} from '../helpers/seed';
+import { createInternalUser, SeededIam, seedIamAdmin } from '../helpers/seed';
 import { InternalUserAppEntity } from '../../src/common/database/internal-user/internal-user-app.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -24,6 +16,7 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, ErrorBody } from '../helpers/response-types';
 
 describe('POST /internal-users/:id/applications (e2e)', () => {
   let testApp: AppTestApp;
@@ -94,7 +87,7 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
 
       const row = await testApp.dataSource
         .getRepository(InternalUserAppEntity)
-        .findOneByOrFail({ id: response.body.id });
+        .findOneByOrFail({ id: bodyOf<InternalUserAppEntity>(response).id });
       expect(row.internalUserId).toBe(userId);
       expect(row.applicationId).toBe(iam.iamApplication.id);
     });
@@ -111,7 +104,7 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
     it('returns 400 when applicationId is missing', async () => {
       const response = await send(adminAuthorization(), {}).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'applicationId must be an integer number',
       ]);
     });
@@ -122,7 +115,7 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
         validBody({ applicationId: '1' }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'applicationId must be an integer number',
       ]);
     });
@@ -141,7 +134,7 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
         'abc',
       ).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'Validation failed (numeric string is expected)',
       );
     });
@@ -226,13 +219,13 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -240,13 +233,13 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -254,7 +247,7 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -264,7 +257,7 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -272,7 +265,7 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

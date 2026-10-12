@@ -37,7 +37,7 @@ describe('AppUsersService.assignRole', () => {
     roles.findById.mockResolvedValue({ id: 9, applicationId: 5 });
     userRoles.existsForAppUserAndRole.mockResolvedValue(false);
     userRoles.createAssignment.mockImplementation(
-      async (entity: UserRoleEntity) => Object.assign(entity, { id: 80 }),
+      (entity: UserRoleEntity) => Promise.resolve(Object.assign(entity, { id: 80 })),
     );
   });
 
@@ -73,7 +73,7 @@ describe('AppUsersService.assignRole', () => {
   it('copies the applicationId from the role, never from the caller', async () => {
     await service.assignRole(1, { roleId: 9, applicationId: 777 } as never);
 
-    const entity = userRoles.createAssignment.mock.calls[0][0];
+    const entity = userRoles.createAssignment.mock.calls[0][0] as UserRoleEntity;
     expect(entity).toBeInstanceOf(UserRoleEntity);
     expect(entity).toMatchObject({
       appUserId: 1,

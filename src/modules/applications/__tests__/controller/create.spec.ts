@@ -66,7 +66,7 @@ describe('ApplicationsController.create', () => {
       'design:paramtypes',
       ApplicationsController.prototype,
       'create',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(CreateApplicationDto);

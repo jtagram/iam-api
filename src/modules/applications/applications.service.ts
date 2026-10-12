@@ -5,45 +5,34 @@ import { CreateApplicationDto } from './dto/create-application.dto';
 import { ApplicationMapper } from './application.mapper';
 import { ApplicationResponse } from './dto/application-response.dto';
 
-const APPLICATION_NAME_ALREADY_EXISTS_MESSAGE =
-  'An application with this name already exists';
+const APPLICATION_NAME_ALREADY_EXISTS_MESSAGE = 'An application with this name already exists';
 
 @Injectable()
 export class ApplicationsService {
-  constructor(
-    private readonly applicationsRepository: ApplicationsRepository,
-  ) {}
+	constructor(private readonly applicationsRepository: ApplicationsRepository) {}
 
-  async create(
-    dto: CreateApplicationDto,
-  ): Promise<ResponseBody<ApplicationResponse>> {
-    const existingApplication = await this.applicationsRepository.findByName(
-      dto.name,
-    );
-    if (existingApplication) {
-      throw new ConflictException(APPLICATION_NAME_ALREADY_EXISTS_MESSAGE);
-    }
+	async create(dto: CreateApplicationDto): Promise<ResponseBody<ApplicationResponse>> {
+		const existingApplication = await this.applicationsRepository.findByName(dto.name);
+		if (existingApplication) {
+			throw new ConflictException(APPLICATION_NAME_ALREADY_EXISTS_MESSAGE);
+		}
 
-    const applicationEntity = ApplicationMapper.toEntity(dto);
-    const createdApplication =
-      await this.applicationsRepository.createApplication(applicationEntity);
+		const applicationEntity = ApplicationMapper.toEntity(dto);
+		const createdApplication =
+			await this.applicationsRepository.createApplication(applicationEntity);
 
-    return ResponseBody.builder<ApplicationResponse>()
-      .withMsg('Application created successfully')
-      .withData(ApplicationMapper.toResponse(createdApplication))
-      .build();
-  }
+		return ResponseBody.builder<ApplicationResponse>()
+			.withMsg('Application created successfully')
+			.withData(ApplicationMapper.toResponse(createdApplication))
+			.build();
+	}
 
-  async findAll(): Promise<ResponseBody<ApplicationResponse[]>> {
-    const applications = await this.applicationsRepository.findAll();
+	async findAll(): Promise<ResponseBody<ApplicationResponse[]>> {
+		const applications = await this.applicationsRepository.findAll();
 
-    return ResponseBody.builder<ApplicationResponse[]>()
-      .withMsg('Applications retrieved successfully')
-      .withData(
-        applications.map((application) =>
-          ApplicationMapper.toResponse(application),
-        ),
-      )
-      .build();
-  }
+		return ResponseBody.builder<ApplicationResponse[]>()
+			.withMsg('Applications retrieved successfully')
+			.withData(applications.map((application) => ApplicationMapper.toResponse(application)))
+			.build();
+	}
 }

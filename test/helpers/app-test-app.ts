@@ -104,11 +104,12 @@ export async function createAppTestApp(): Promise<AppTestApp> {
   try {
     // Loaded lazily: EnvModule calls ConfigModule.forRoot({ validate }) while
     // the module file is evaluated, so the env must already be set by then.
-    // `require` (not `import()`): this project compiles to CommonJS and a
-    // native dynamic import() cannot load .ts files under jest.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { AppModule } =
-      require('../../src/app.module') as typeof import('../../src/app.module');
+    // Not `import()`: a native dynamic import() cannot load .ts files under
+    // jest.
+    // `jest.requireActual` is a plain CommonJS require resolved by jest.
+    const { AppModule } = jest.requireActual<
+      typeof import('../../src/app.module')
+    >('../../src/app.module');
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DataSource)
       .useValue(dataSource)
@@ -124,7 +125,8 @@ export async function createAppTestApp(): Promise<AppTestApp> {
     return {
       app,
       dataSource,
-      http: () => request(app.getHttpServer()),
+      http: () =>
+        request(app.getHttpServer() as Parameters<typeof request>[0]),
       resetTables: async () => {
         for (const entity of ENTITIES) {
           await dataSource.getRepository(entity).clear();

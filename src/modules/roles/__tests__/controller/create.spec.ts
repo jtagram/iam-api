@@ -64,7 +64,7 @@ describe('RolesController.create', () => {
       'design:paramtypes',
       RolesController.prototype,
       'create',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(CreateRoleDto);

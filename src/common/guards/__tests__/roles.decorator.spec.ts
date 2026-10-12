@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { Role } from '../../database/role/role.enum';
 import { ROLES_KEY, Roles } from '../roles.decorator';
+import { prototypeMethod } from '../../../../test/helpers/mocks';
 
 describe('Roles', () => {
   it('exposes the metadata key used by the guard', () => {
@@ -14,7 +15,10 @@ describe('Roles', () => {
     }
 
     expect(
-      Reflect.getMetadata(ROLES_KEY, Controller.prototype.handler),
+      Reflect.getMetadata(
+        ROLES_KEY,
+        prototypeMethod(Controller.prototype, 'handler'),
+      ),
     ).toEqual([Role.ADMIN]);
   });
 
@@ -32,7 +36,10 @@ describe('Roles', () => {
     }
 
     expect(
-      Reflect.getMetadata(ROLES_KEY, Controller.prototype.handler),
+      Reflect.getMetadata(
+        ROLES_KEY,
+        prototypeMethod(Controller.prototype, 'handler'),
+      ),
     ).toEqual([]);
   });
 });

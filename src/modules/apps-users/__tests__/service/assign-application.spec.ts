@@ -37,7 +37,7 @@ describe('AppUsersService.assignApplication', () => {
     applications.findById.mockResolvedValue({ id: 5 });
     userApps.existsForAppUserAndApplication.mockResolvedValue(false);
     userApps.createAssignment.mockImplementation(
-      async (entity: UserAppEntity) => Object.assign(entity, { id: 70 }),
+      (entity: UserAppEntity) => Promise.resolve(Object.assign(entity, { id: 70 })),
     );
   });
 
@@ -82,7 +82,7 @@ describe('AppUsersService.assignApplication', () => {
   it('persists an assignment for the user and the application', async () => {
     await service.assignApplication(1, dto);
 
-    const entity = userApps.createAssignment.mock.calls[0][0];
+    const entity = userApps.createAssignment.mock.calls[0][0] as UserAppEntity;
     expect(entity).toBeInstanceOf(UserAppEntity);
     expect(entity).toMatchObject({ appUserId: 1, applicationId: 5 });
   });

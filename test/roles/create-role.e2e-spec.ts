@@ -7,13 +7,11 @@ import {
   it,
   jest,
 } from '@jest/globals';
-import { ApplicationEntity } from '../../src/common/database/application/application.entity';
 import { RoleEntity } from '../../src/common/database/role/role.entity';
-import { createApplication, createRole } from '../helpers/seed';
+import { createApplication, SeededIam, seedIamAdmin } from '../helpers/seed';
 import { RolesRepository } from '../../src/common/database/role/roles.repository';
 import { createBarrier } from '../helpers/concurrency';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -21,6 +19,9 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { RoleResponse } from '../../src/modules/roles/dto/role-response.dto';
+import { prototypeMethod } from '../helpers/mocks';
 
 describe('POST /roles (e2e)', () => {
   let testApp: AppTestApp;
@@ -83,7 +84,7 @@ describe('POST /roles (e2e)', () => {
 
       const row = await testApp.dataSource
         .getRepository(RoleEntity)
-        .findOneByOrFail({ id: response.body.data.id });
+        .findOneByOrFail({ id: dataOf<RoleResponse>(response).id });
       expect(row.applicationId).toBe(iam.iamApplication.id);
       expect(row.name).toBe('EDITOR');
       expect(row.description).toBe('Can edit content');
@@ -114,8 +115,8 @@ describe('POST /roles (e2e)', () => {
         validBody({ id: 999, extra: 'ignored' }),
       ).expect(201);
 
-      expect(response.body.data.id).not.toBe(999);
-      expect(response.body.data).not.toHaveProperty('extra');
+      expect(dataOf<RoleResponse>(response).id).not.toBe(999);
+      expect(dataOf<RoleResponse>(response)).not.toHaveProperty('extra');
     });
   });
 
@@ -123,8 +124,8 @@ describe('POST /roles (e2e)', () => {
     it('returns 400 when the body is empty', async () => {
       const response = await send(adminAuthorization(), {}).expect(400);
 
-      expect(response.body.statusCode).toBe(400);
-      expect(response.body.message).toEqual(
+      expect(bodyOf<ErrorBody>(response).statusCode).toBe(400);
+      expect(bodyOf<ErrorBody>(response).message).toEqual(
         expect.arrayContaining([
           'applicationId must be an integer number',
           'name must be a string',
@@ -139,7 +140,7 @@ describe('POST /roles (e2e)', () => {
         validBody({ applicationId: String(iam.iamApplication.id) }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'applicationId must be an integer number',
       ]);
     });
@@ -157,7 +158,7 @@ describe('POST /roles (e2e)', () => {
         validBody({ name: 'R'.repeat(21) }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'name must be shorter than or equal to 20 characters',
       ]);
     });
@@ -168,7 +169,7 @@ describe('POST /roles (e2e)', () => {
         validBody({ description: 'd'.repeat(201) }),
       ).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'description must be shorter than or equal to 200 characters',
       ]);
     });
@@ -221,7 +222,10 @@ describe('POST /roles (e2e)', () => {
 
     it('answers 500 with the generic message to the loser of a concurrent duplicate creation and persists a single row (documents current behavior)', async () => {
       const barrier = createBarrier(2);
-      const original = RolesRepository.prototype.findAllByApplicationIdAndNames;
+      const original = prototypeMethod(
+        RolesRepository.prototype,
+        'findAllByApplicationIdAndNames',
+      );
       const spy = jest
         .spyOn(RolesRepository.prototype, 'findAllByApplicationIdAndNames')
         .mockImplementation(async function (
@@ -230,7 +234,7 @@ describe('POST /roles (e2e)', () => {
           names: string[],
         ) {
           await barrier.arrive();
-          return original.call(this, applicationId, names);
+          return Reflect.apply(original, this, [applicationId, names]);
         });
 
       try {
@@ -266,13 +270,13 @@ describe('POST /roles (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -280,13 +284,13 @@ describe('POST /roles (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -294,7 +298,7 @@ describe('POST /roles (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -304,7 +308,7 @@ describe('POST /roles (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -312,7 +316,7 @@ describe('POST /roles (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

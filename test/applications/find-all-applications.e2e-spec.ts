@@ -7,9 +7,8 @@ import {
   it,
 } from '@jest/globals';
 import { ApplicationEntity } from '../../src/common/database/application/application.entity';
-import { createApplication } from '../helpers/seed';
+import { createApplication, SeededIam, seedIamAdmin } from '../helpers/seed';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -17,6 +16,9 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { ApplicationResponse } from '../../src/modules/applications/dto/application-response.dto';
+import { ResponseBody } from '../../src/common/dto/response-body.dto';
 
 describe('GET /applications (e2e)', () => {
   let testApp: AppTestApp;
@@ -72,9 +74,9 @@ describe('GET /applications (e2e)', () => {
 
     const response = await send().expect(200);
 
-    expect(response.body.msg).toBe('Applications retrieved successfully');
-    expect(response.body.data).toHaveLength(3);
-    expect(response.body.data).toEqual(
+    expect(bodyOf<ResponseBody<unknown>>(response).msg).toBe('Applications retrieved successfully');
+    expect(dataOf<ApplicationResponse[]>(response)).toHaveLength(3);
+    expect(dataOf<ApplicationResponse[]>(response)).toEqual(
       expect.arrayContaining([
         {
           id: iam.iamApplication.id,
@@ -120,13 +122,13 @@ describe('GET /applications (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -134,13 +136,13 @@ describe('GET /applications (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -148,7 +150,7 @@ describe('GET /applications (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -158,7 +160,7 @@ describe('GET /applications (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -166,7 +168,7 @@ describe('GET /applications (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

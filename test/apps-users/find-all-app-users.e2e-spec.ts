@@ -6,16 +6,8 @@ import {
   expect,
   it,
 } from '@jest/globals';
-import {
-  createAppUser,
-  connectAppUser,
-  createApplication,
-  createRole,
-  grantAppUserApplication,
-  grantAppUserRole,
-} from '../helpers/seed';
+import { createAppUser, seedIamAdmin } from '../helpers/seed';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -23,10 +15,11 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { AppUserResponse } from '../../src/modules/apps-users/dto/app-user-response.dto';
 
 describe('GET /apps-users (e2e)', () => {
   let testApp: AppTestApp;
-  let iam: SeededIam;
 
   beforeAll(async () => {
     testApp = await createAppTestApp();
@@ -34,7 +27,7 @@ describe('GET /apps-users (e2e)', () => {
 
   beforeEach(async () => {
     await testApp.resetTables();
-    iam = await seedIamAdmin(testApp.dataSource);
+    await seedIamAdmin(testApp.dataSource);
   });
 
   afterAll(async () => {
@@ -78,7 +71,7 @@ describe('GET /apps-users (e2e)', () => {
     const response = await send().expect(200);
 
     expect(
-      response.body.data.map((u: { clienteId: string }) => u.clienteId).sort(),
+      dataOf<AppUserResponse[]>(response).map((u: { clienteId: string }) => u.clienteId).sort(),
     ).toEqual(['client-a', 'client-b']);
   });
 
@@ -87,7 +80,7 @@ describe('GET /apps-users (e2e)', () => {
 
     const response = await send().expect(200);
 
-    expect(Object.keys(response.body.data[0]).sort()).toEqual([
+    expect(Object.keys(dataOf<AppUserResponse[]>(response)[0]).sort()).toEqual([
       'clienteId',
       'description',
       'id',
@@ -119,13 +112,13 @@ describe('GET /apps-users (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -133,13 +126,13 @@ describe('GET /apps-users (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -147,7 +140,7 @@ describe('GET /apps-users (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -157,7 +150,7 @@ describe('GET /apps-users (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -165,7 +158,7 @@ describe('GET /apps-users (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

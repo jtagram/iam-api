@@ -48,8 +48,8 @@ describe('AppUsersService.createConnection', () => {
     userApps.existsForAppUserAndApplication.mockResolvedValue(true);
     connections.existsForAppUserAndApplications.mockResolvedValue(false);
     connections.createConnection.mockImplementation(
-      async (entity: AppUserConnectionEntity) =>
-        Object.assign(entity, { id: 90 }),
+      (entity: AppUserConnectionEntity) =>
+        Promise.resolve(Object.assign(entity, { id: 90 })),
     );
   });
 
@@ -136,7 +136,7 @@ describe('AppUsersService.createConnection', () => {
   it('persists a connection for the user, origin and destination', async () => {
     await service.createConnection(1, dto);
 
-    const entity = connections.createConnection.mock.calls[0][0];
+    const entity = connections.createConnection.mock.calls[0][0] as AppUserConnectionEntity;
     expect(entity).toBeInstanceOf(AppUserConnectionEntity);
     expect(entity).toMatchObject({
       appUserId: 1,
@@ -160,7 +160,7 @@ describe('AppUsersService.createConnection', () => {
 
   it('allows the reverse direction as a separate connection', async () => {
     connections.existsForAppUserAndApplications.mockImplementation(
-      async (_user: number, origin: number) => origin === 10,
+      (_user: number, origin: number) => Promise.resolve(origin === 10),
     );
     applications.findByIds.mockResolvedValue([
       { id: 10, name: 'iam' },

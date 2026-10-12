@@ -64,7 +64,7 @@ describe('AppUsersController.create', () => {
       'design:paramtypes',
       AppUsersController.prototype,
       'create',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(CreateAppUserDto);

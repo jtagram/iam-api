@@ -78,7 +78,7 @@ describe('InternalUsersController.assignApplication', () => {
       'design:paramtypes',
       InternalUsersController.prototype,
       'assignApplication',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(AssignApplicationDto);

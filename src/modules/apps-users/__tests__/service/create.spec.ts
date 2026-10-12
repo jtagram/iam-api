@@ -7,7 +7,7 @@ import {
   jest,
 } from '@jest/globals';
 import * as bcrypt from 'bcrypt';
-import { mockFn } from '../../../../../test/helpers/mocks';
+import { mockFn, prototypeMethod } from '../../../../../test/helpers/mocks';
 import { AppUserEntity } from '../../../../common/database/app-user/app-user.entity';
 import { AppUsersRepository } from '../../../../common/database/app-user/app-users.repository';
 import { AppUsersService } from '../../apps-users.service';
@@ -35,8 +35,8 @@ describe('AppUsersService.create', () => {
     jest
       .spyOn(CredentialGenerator, 'generateClienteSecret')
       .mockReturnValue('plain-secret');
-    repository.createAppUser.mockImplementation(async (entity: AppUserEntity) =>
-      Object.assign(entity, { id: 3 }),
+    repository.createAppUser.mockImplementation((entity: AppUserEntity) =>
+      Promise.resolve(Object.assign(entity, { id: 3 })),
     );
   });
 
@@ -47,7 +47,7 @@ describe('AppUsersService.create', () => {
   it('persists an entity with the generated clienteId and the dto fields', async () => {
     await service.create(dto);
 
-    const entity = repository.createAppUser.mock.calls[0][0];
+    const entity = repository.createAppUser.mock.calls[0][0] as AppUserEntity;
     expect(entity).toBeInstanceOf(AppUserEntity);
     expect(entity).toMatchObject({
       clienteId: 'cid-123456789012',
@@ -59,7 +59,7 @@ describe('AppUsersService.create', () => {
   it('stores a bcrypt hash of the secret, never the plaintext', async () => {
     await service.create(dto);
 
-    const entity = repository.createAppUser.mock.calls[0][0];
+    const entity = repository.createAppUser.mock.calls[0][0] as AppUserEntity;
     expect(entity.clienteSecret).not.toBe('plain-secret');
     expect(entity.clienteSecret).toMatch(/^\$2[aby]\$10\$/);
     await expect(
@@ -82,7 +82,7 @@ describe('AppUsersService.create', () => {
 
   it('does not return the stored hash', async () => {
     const result = await service.create(dto);
-    const entity = repository.createAppUser.mock.calls[0][0];
+    const entity = repository.createAppUser.mock.calls[0][0] as AppUserEntity;
 
     expect(JSON.stringify(result)).not.toContain(entity.clienteSecret);
   });
@@ -91,8 +91,12 @@ describe('AppUsersService.create', () => {
     await service.create(dto);
     await service.create(dto);
 
-    expect(CredentialGenerator.generateClienteId).toHaveBeenCalledTimes(2);
-    expect(CredentialGenerator.generateClienteSecret).toHaveBeenCalledTimes(2);
+    expect(
+      prototypeMethod(CredentialGenerator, 'generateClienteId'),
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      prototypeMethod(CredentialGenerator, 'generateClienteSecret'),
+    ).toHaveBeenCalledTimes(2);
   });
 
   it('propagates a repository failure', async () => {

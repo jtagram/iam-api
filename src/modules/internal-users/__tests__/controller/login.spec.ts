@@ -76,7 +76,7 @@ describe('InternalUsersLoginController.login', () => {
       'design:paramtypes',
       InternalUsersLoginController.prototype,
       'login',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(LoginInternalUserDto);

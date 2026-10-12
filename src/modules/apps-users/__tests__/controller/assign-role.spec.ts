@@ -74,7 +74,7 @@ describe('AppUsersController.assignRole', () => {
       'design:paramtypes',
       AppUsersController.prototype,
       'assignRole',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(AssignRoleDto);

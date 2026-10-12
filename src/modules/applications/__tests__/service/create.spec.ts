@@ -21,7 +21,7 @@ describe('ApplicationsService.create', () => {
     );
     repository.findByName.mockResolvedValue(null);
     repository.createApplication.mockImplementation(
-      async (entity: ApplicationEntity) => Object.assign(entity, { id: 7 }),
+      (entity: ApplicationEntity) => Promise.resolve(Object.assign(entity, { id: 7 })),
     );
   });
 
@@ -50,7 +50,7 @@ describe('ApplicationsService.create', () => {
   it('persists an entity built from the dto', async () => {
     await service.create(dto);
 
-    const entity = repository.createApplication.mock.calls[0][0];
+    const entity = repository.createApplication.mock.calls[0][0] as ApplicationEntity;
     expect(entity).toBeInstanceOf(ApplicationEntity);
     expect(entity).toMatchObject(dto);
   });

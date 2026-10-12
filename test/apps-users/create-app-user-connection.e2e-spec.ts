@@ -9,17 +9,15 @@ import {
 } from '@jest/globals';
 import {
   createAppUser,
-  connectAppUser,
   createApplication,
-  createRole,
   grantAppUserApplication,
-  grantAppUserRole,
+  SeededIam,
+  seedIamAdmin,
 } from '../helpers/seed';
 import { AppUserConnectionEntity } from '../../src/common/database/app-user-connection/app-user-connection.entity';
 import { AppUserConnectionsRepository } from '../../src/common/database/app-user-connection/app-user-connections.repository';
 import { createBarrier } from '../helpers/concurrency';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -27,6 +25,9 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { ConnectionResponse } from '../../src/common/dto/connection-response.dto';
+import { prototypeMethod } from '../helpers/mocks';
 
 describe('POST /apps-users/:id/connections (e2e)', () => {
   let testApp: AppTestApp;
@@ -111,7 +112,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 
       const row = await testApp.dataSource
         .getRepository(AppUserConnectionEntity)
-        .findOneByOrFail({ id: response.body.data.id });
+        .findOneByOrFail({ id: dataOf<ConnectionResponse>(response).id });
       expect(row.appUserId).toBe(userId);
       expect(row.originApplicationId).toBe(iam.iamApplication.id);
       expect(row.destinationApplicationId).toBe(billingId);
@@ -149,7 +150,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
     it('returns 400 when the body is empty', async () => {
       const response = await send(adminAuthorization(), {}).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'originApplicationId must be an integer number',
         'destinationApplicationId must be an integer number',
       ]);
@@ -169,7 +170,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
         'abc',
       ).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'Validation failed (numeric string is expected)',
       );
     });
@@ -196,7 +197,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
         validBody({ originApplicationId: hub.id }),
       ).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'The user does not have this application assigned',
       );
       expect(await connectionCount()).toBe(0);
@@ -210,7 +211,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
         validBody({ destinationApplicationId: hub.id }),
       ).expect(400);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'The user does not have this application assigned',
       );
       expect(await connectionCount()).toBe(0);
@@ -296,8 +297,10 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 
     it('creates two identical rows when the same connection is requested concurrently, because nothing enforces uniqueness in the database (documents current behavior)', async () => {
       const barrier = createBarrier(2);
-      const original =
-        AppUserConnectionsRepository.prototype.existsForAppUserAndApplications;
+      const original = prototypeMethod(
+        AppUserConnectionsRepository.prototype,
+        'existsForAppUserAndApplications',
+      );
       const spy = jest
         .spyOn(
           AppUserConnectionsRepository.prototype,
@@ -310,7 +313,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
           >
         ) {
           await barrier.arrive();
-          return original.apply(this, args);
+          return Reflect.apply(original, this, args);
         });
 
       try {
@@ -338,13 +341,13 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -352,13 +355,13 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -366,7 +369,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -376,7 +379,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -384,7 +387,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

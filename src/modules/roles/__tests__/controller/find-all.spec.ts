@@ -64,7 +64,7 @@ describe('RolesController.findAll', () => {
       'design:paramtypes',
       RolesController.prototype,
       'findAll',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(FindRolesQueryDto);

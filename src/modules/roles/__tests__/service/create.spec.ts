@@ -28,8 +28,8 @@ describe('RolesService.create', () => {
     );
     applicationsRepository.findById.mockResolvedValue({ id: 1, name: 'iam' });
     rolesRepository.findAllByApplicationIdAndNames.mockResolvedValue([]);
-    rolesRepository.createRole.mockImplementation(async (entity: RoleEntity) =>
-      Object.assign(entity, { id: 11 }),
+    rolesRepository.createRole.mockImplementation((entity: RoleEntity) =>
+      Promise.resolve(Object.assign(entity, { id: 11 })),
     );
   });
 
@@ -78,7 +78,7 @@ describe('RolesService.create', () => {
   it('persists an entity built from the dto', async () => {
     await service.create(dto);
 
-    const entity = rolesRepository.createRole.mock.calls[0][0];
+    const entity = rolesRepository.createRole.mock.calls[0][0] as RoleEntity;
     expect(entity).toBeInstanceOf(RoleEntity);
     expect(entity).toMatchObject(dto);
   });

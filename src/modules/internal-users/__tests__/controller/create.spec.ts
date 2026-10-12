@@ -76,7 +76,7 @@ describe('InternalUsersController.create', () => {
       'design:paramtypes',
       InternalUsersController.prototype,
       'create',
-    );
+    ) as unknown[];
 
     expect(params).toHaveLength(1);
     expect(types[params[0].index]).toBe(CreateInternalUserDto);

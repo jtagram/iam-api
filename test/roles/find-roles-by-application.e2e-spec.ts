@@ -6,11 +6,13 @@ import {
   expect,
   it,
 } from '@jest/globals';
-import { ApplicationEntity } from '../../src/common/database/application/application.entity';
-import { RoleEntity } from '../../src/common/database/role/role.entity';
-import { createApplication, createRole } from '../helpers/seed';
+import {
+  createApplication,
+  createRole,
+  SeededIam,
+  seedIamAdmin,
+} from '../helpers/seed';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
-import { SeededIam, seedIamAdmin } from '../helpers/seed';
 import {
   adminAuthorization,
   authorizationHeaderFor,
@@ -18,6 +20,8 @@ import {
   authorizationSignedByAnotherKey,
   expiredAuthorization,
 } from '../helpers/test-auth';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { RoleResponse } from '../../src/modules/roles/dto/role-response.dto';
 
 describe('GET /roles (e2e)', () => {
   let testApp: AppTestApp;
@@ -77,9 +81,9 @@ describe('GET /roles (e2e)', () => {
     const response = await send().expect(200);
 
     expect(
-      response.body.data.map((role: { name: string }) => role.name).sort(),
+      dataOf<RoleResponse[]>(response).map((role: { name: string }) => role.name).sort(),
     ).toEqual(['ADMIN', 'EDITOR']);
-    expect(response.body.data).toContainEqual({
+    expect(dataOf<RoleResponse[]>(response)).toContainEqual({
       id: editor.id,
       applicationId: iam.iamApplication.id,
       name: 'EDITOR',
@@ -111,7 +115,7 @@ describe('GET /roles (e2e)', () => {
     it('returns 400 when applicationId is missing', async () => {
       const response = await send(adminAuthorization(), {}).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'applicationId must be an integer number',
       ]);
     });
@@ -121,7 +125,7 @@ describe('GET /roles (e2e)', () => {
         applicationId: 'abc',
       }).expect(400);
 
-      expect(response.body.message).toEqual([
+      expect(bodyOf<ErrorBody>(response).message).toEqual([
         'applicationId must be an integer number',
       ]);
     });
@@ -157,13 +161,13 @@ describe('GET /roles (e2e)', () => {
     it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
       const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(response.body.message).toBe('Missing or malformed bearer token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
     });
 
     it('returns 401 when the token is not a JWT', async () => {
       const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is signed with a key the app does not trust', async () => {
@@ -171,13 +175,13 @@ describe('GET /roles (e2e)', () => {
         401,
       );
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 401 when the token is expired', async () => {
       const response = await send(expiredAuthorization()).expect(401);
 
-      expect(response.body.message).toBe('Invalid or expired token');
+      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
     });
 
     it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -185,7 +189,7 @@ describe('GET /roles (e2e)', () => {
         authorizationHeaderFor({ applicationName: 'ticket-hub' }),
       ).expect(403);
 
-      expect(response.body.message).toBe(
+      expect(bodyOf<ErrorBody>(response).message).toBe(
         'This token was not issued for the iam application',
       );
     });
@@ -195,7 +199,7 @@ describe('GET /roles (e2e)', () => {
         authorizationHeaderFor({ roles: ['VIEWER'] }),
       ).expect(403);
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 403 when the token carries no roles (deny by default)', async () => {
@@ -203,7 +207,7 @@ describe('GET /roles (e2e)', () => {
         403,
       );
 
-      expect(response.body.message).toBe('You do not have the required role');
+      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
     });
 
     it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {

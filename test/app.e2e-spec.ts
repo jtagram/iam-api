@@ -7,7 +7,11 @@ import {
   it,
 } from '@jest/globals';
 import { ApplicationEntity } from '../src/common/database/application/application.entity';
+import { ApplicationResponse } from '../src/modules/applications/dto/application-response.dto';
+import { JwksResponse } from '../src/modules/jwks/dto/jwks-response.dto';
+import { RoleResponse } from '../src/modules/roles/dto/role-response.dto';
 import { AppTestApp, createAppTestApp } from './helpers/app-test-app';
+import { bodyOf, dataOf } from './helpers/response-types';
 import { seedIamAdmin } from './helpers/seed';
 import {
   adminAuthorization,
@@ -38,7 +42,7 @@ describe('AppModule (e2e smoke)', () => {
       .get('/.well-known/jwks.json')
       .expect(200);
 
-    expect(response.body.keys).toHaveLength(1);
+    expect(bodyOf<JwksResponse>(response).keys).toHaveLength(1);
   });
 
   it('returns 404 for a route that does not exist', async () => {
@@ -93,7 +97,7 @@ describe('AppModule (e2e smoke)', () => {
       .query({ applicationId: String(iam.id) })
       .set('Authorization', adminAuthorization())
       .expect(200);
-    expect(roles.body.data).toHaveLength(1);
+    expect(dataOf<RoleResponse[]>(roles)).toHaveLength(1);
   });
 
   it('creates an application through the real wiring and persists it in pg-mem', async () => {
@@ -106,7 +110,7 @@ describe('AppModule (e2e smoke)', () => {
 
     const row = await testApp.dataSource
       .getRepository(ApplicationEntity)
-      .findOneByOrFail({ id: created.body.data.id });
+      .findOneByOrFail({ id: dataOf<ApplicationResponse>(created).id });
     expect(row.name).toBe('smoke-app');
 
     const listed = await testApp
@@ -114,7 +118,7 @@ describe('AppModule (e2e smoke)', () => {
       .get('/applications')
       .set('Authorization', adminAuthorization())
       .expect(200);
-    expect(listed.body.data.map((a: { name: string }) => a.name)).toEqual(
+    expect(dataOf<ApplicationResponse[]>(listed).map((a) => a.name)).toEqual(
       expect.arrayContaining(['iam', 'smoke-app']),
     );
   });
