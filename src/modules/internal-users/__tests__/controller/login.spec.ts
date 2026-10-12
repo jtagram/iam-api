@@ -8,7 +8,7 @@ import {
   routeOf,
 } from '../../../../../test/helpers/route-metadata';
 import {
-  APPLICATION_NAME_HEADER,
+  ORIGIN_APPLICATION_HEADER,
   TARGET_APPLICATION_HEADER,
 } from '../../../../common/decorators/application-name.decorator';
 import { InternalUsersLoginController } from '../../internal-users-login.controller';
@@ -82,13 +82,13 @@ describe('InternalUsersLoginController.login', () => {
     expect(types[params[0].index]).toBe(LoginInternalUserDto);
   });
 
-  it('takes the origin application from the x-application-name header', () => {
+  it('takes the origin application from the x-origin-application header', () => {
     const [origin] = customParamsOf(InternalUsersLoginController, 'login');
     const context = {
       switchToHttp: () => ({
         getRequest: () => ({
           headers: {
-            [APPLICATION_NAME_HEADER]: 'iam',
+            [ORIGIN_APPLICATION_HEADER]: 'iam',
             [TARGET_APPLICATION_HEADER]: 'ticket-hub',
           },
         }),
@@ -105,7 +105,7 @@ describe('InternalUsersLoginController.login', () => {
       switchToHttp: () => ({
         getRequest: () => ({
           headers: {
-            [APPLICATION_NAME_HEADER]: 'iam',
+            [ORIGIN_APPLICATION_HEADER]: 'iam',
             [TARGET_APPLICATION_HEADER]: 'ticket-hub',
           },
         }),

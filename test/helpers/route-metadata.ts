@@ -66,7 +66,7 @@ export const queryParamsOf = (controller: Controller, handler: string) =>
 export const pathParamsOf = (controller: Controller, handler: string) =>
   paramsOf(controller, handler, RouteParamtypes.PARAM);
 
-/** Custom param decorators (e.g. @ApplicationName()) keyed with a uuid suffix. */
+/** Custom param decorators (e.g. @OriginApplication()) keyed with a uuid suffix. */
 export function customParamsOf(
   controller: Controller,
   handler: string,

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { setupSwagger } from './common/swagger/setup-swagger';
 
 async function bootstrap() {
   // `bufferLogs: true` holds Nest's own bootstrap log calls (module init,
@@ -16,6 +17,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  setupSwagger(app);
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

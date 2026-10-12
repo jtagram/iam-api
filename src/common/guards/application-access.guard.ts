@@ -18,7 +18,7 @@ const WRONG_APPLICATION_MESSAGE =
 /**
  * Every non-public iam-api route only accepts tokens issued for this exact
  * application (`IAM_APPLICATION_NAME`, matching what the `iam` frontend sends
- * as `x-application-name`). Without this, a valid token from an unrelated app
+ * as `x-origin-application`). Without this, a valid token from an unrelated app
  * (e.g. "ticket-hub") would reach any route that has no `@Roles()`, and role
  * names collide across applications by design.
  */

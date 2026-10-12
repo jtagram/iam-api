@@ -49,9 +49,9 @@ describe('TargetApplication', () => {
     expect(factory(undefined, context)).toBe('ticket-hub');
   });
 
-  it('ignores the x-application-name header', () => {
+  it('ignores the x-origin-application header', () => {
     const context = contextWith({
-      'x-application-name': 'iam',
+      'x-origin-application': 'iam',
       'x-target-application': 'ticket-hub',
     });
 
@@ -73,7 +73,7 @@ describe('TargetApplication', () => {
   });
 
   it('throws BadRequest when only the origin header is present', () => {
-    const context = contextWith({ 'x-application-name': 'iam' });
+    const context = contextWith({ 'x-origin-application': 'iam' });
 
     expect(() => factory(undefined, context)).toThrow(BadRequestException);
   });

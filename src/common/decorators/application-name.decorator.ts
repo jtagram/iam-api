@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
-export const APPLICATION_NAME_HEADER = 'x-application-name';
+export const ORIGIN_APPLICATION_HEADER = 'x-origin-application';
 export const TARGET_APPLICATION_HEADER = 'x-target-application';
 
 function requiredHeader(context: ExecutionContext, headerName: string): string {
@@ -22,12 +22,12 @@ function requiredHeader(context: ExecutionContext, headerName: string): string {
 
 /**
  * Name of the ORIGIN application (the one making the login), read from the
- * `x-application-name` header. Rejects the request with 400 when it is
+ * `x-origin-application` header. Rejects the request with 400 when it is
  * missing or blank.
  */
-export const ApplicationName = createParamDecorator(
+export const OriginApplication = createParamDecorator(
   (_data: unknown, context: ExecutionContext): string =>
-    requiredHeader(context, APPLICATION_NAME_HEADER),
+    requiredHeader(context, ORIGIN_APPLICATION_HEADER),
 );
 
 /**

@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
-  ApplicationName,
+  OriginApplication,
   TargetApplication,
 } from '../../common/decorators/application-name.decorator';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
@@ -17,7 +17,7 @@ export class AppUsersLoginController {
   @Public()
   login(
     @Body() dto: LoginDto,
-    @ApplicationName() originApplicationName: string,
+    @OriginApplication() originApplicationName: string,
     @TargetApplication() targetApplicationName: string,
   ): Promise<ResponseLogin> {
     return this.appUsersLoginService.login(

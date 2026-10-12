@@ -8,7 +8,7 @@ import {
   routeOf,
 } from '../../../../../test/helpers/route-metadata';
 import {
-  APPLICATION_NAME_HEADER,
+  ORIGIN_APPLICATION_HEADER,
   TARGET_APPLICATION_HEADER,
 } from '../../../../common/decorators/application-name.decorator';
 import { AppUsersLoginController } from '../../apps-users-login.controller';
@@ -80,13 +80,13 @@ describe('AppUsersLoginController.login', () => {
     expect(types[params[0].index]).toBe(LoginDto);
   });
 
-  it('takes the origin application from the x-application-name header', () => {
+  it('takes the origin application from the x-origin-application header', () => {
     const [origin] = customParamsOf(AppUsersLoginController, 'login');
     const context = {
       switchToHttp: () => ({
         getRequest: () => ({
           headers: {
-            [APPLICATION_NAME_HEADER]: 'iam',
+            [ORIGIN_APPLICATION_HEADER]: 'iam',
             [TARGET_APPLICATION_HEADER]: 'ticket-hub',
           },
         }),
@@ -103,7 +103,7 @@ describe('AppUsersLoginController.login', () => {
       switchToHttp: () => ({
         getRequest: () => ({
           headers: {
-            [APPLICATION_NAME_HEADER]: 'iam',
+            [ORIGIN_APPLICATION_HEADER]: 'iam',
             [TARGET_APPLICATION_HEADER]: 'ticket-hub',
           },
         }),

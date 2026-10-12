@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 /**
  * Response body for `POST /apps-users/login` and `POST /internal-users/login`.
  * Lives in `common/` (not under either feature module's `dto/`) because it
@@ -7,6 +9,7 @@
  * diverge, split this back into a per-module DTO at that point.
  */
 export class ResponseLogin {
+  @ApiProperty({ description: 'Signed JWT access token.' })
   access_token: string;
 
   constructor(access_token: string) {

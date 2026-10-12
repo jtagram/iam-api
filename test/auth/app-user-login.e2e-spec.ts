@@ -94,7 +94,7 @@ describe('POST /apps-users/login (e2e)', () => {
     const origin = headers.origin === undefined ? 'iam' : headers.origin;
     const target = headers.target === undefined ? 'billing' : headers.target;
     if (origin !== null) {
-      req.set('x-application-name', origin);
+      req.set('x-origin-application', origin);
     }
     if (target !== null) {
       req.set('x-target-application', target);
@@ -349,11 +349,11 @@ describe('POST /apps-users/login (e2e)', () => {
       await send({}).expect(400);
     });
 
-    it('returns 400 when x-application-name is missing', async () => {
+    it('returns 400 when x-origin-application is missing', async () => {
       const response = await send(CREDENTIALS, { origin: null }).expect(400);
 
       expect(response.body.message).toBe(
-        'x-application-name header is required',
+        'x-origin-application header is required',
       );
     });
 
@@ -365,11 +365,11 @@ describe('POST /apps-users/login (e2e)', () => {
       );
     });
 
-    it('returns 400 when x-application-name is blank', async () => {
+    it('returns 400 when x-origin-application is blank', async () => {
       const response = await send(CREDENTIALS, { origin: '   ' }).expect(400);
 
       expect(response.body.message).toBe(
-        'x-application-name header is required',
+        'x-origin-application header is required',
       );
     });
 
