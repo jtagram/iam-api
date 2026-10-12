@@ -32,7 +32,7 @@ import {
   ApiAssignInternalUserRole,
   ApiFindInternalUserConnections,
   ApiCreateInternalUserConnection,
-} from './internal-users.swagger';
+} from './swagger/internal-users.swagger';
 
 @ApiTags('Internal users')
 @Controller('internal-users')

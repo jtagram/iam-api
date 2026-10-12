@@ -7,7 +7,7 @@ import {
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 import { Public } from '../../common/guards/public.decorator';
 import { LoginDto } from './dto/login.dto';
-import { ApiAppUserLogin } from './apps-users-login.swagger';
+import { ApiAppUserLogin } from './swagger/apps-users-login.swagger';
 import { AppUsersLoginService } from './apps-users-login.service';
 
 @ApiTags('Apps users')

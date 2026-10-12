@@ -8,12 +8,12 @@ import {
   ApiOperation,
   ApiParam,
 } from '@nestjs/swagger';
-import { ConnectionResponse } from '../../common/dto/connection-response.dto';
-import { ApiProtected } from '../../common/swagger/api-protected.decorator';
-import { InternalUserApplicationAssignmentResponse } from './dto/internal-user-application-assignment-response.dto';
-import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
-import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
-import { InternalUserRoleAssignmentResponse } from './dto/internal-user-role-assignment-response.dto';
+import { ConnectionResponse } from '../../../common/dto/connection-response.dto';
+import { ApiProtected } from '../../../common/swagger/api-protected.decorator';
+import { InternalUserApplicationAssignmentResponse } from '../dto/internal-user-application-assignment-response.dto';
+import { InternalUserApplicationRolesResponse } from '../dto/internal-user-application-roles-response.dto';
+import { InternalUserCreatedResponse } from '../dto/internal-user-created-response.dto';
+import { InternalUserRoleAssignmentResponse } from '../dto/internal-user-role-assignment-response.dto';
 
 const ApiUserIdParam = () =>
   ApiParam({

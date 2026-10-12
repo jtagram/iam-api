@@ -16,7 +16,7 @@ import { ApplicationResponse } from './dto/application-response.dto';
 import {
   ApiCreateApplication,
   ApiFindAllApplications,
-} from './applications.swagger';
+} from './swagger/applications.swagger';
 
 @ApiTags('Applications')
 @Controller('applications')

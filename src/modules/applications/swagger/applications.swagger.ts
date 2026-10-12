@@ -4,12 +4,12 @@ import {
   ApiConflictResponse,
   ApiOperation,
 } from '@nestjs/swagger';
-import { ApiProtected } from '../../common/swagger/api-protected.decorator';
+import { ApiProtected } from '../../../common/swagger/api-protected.decorator';
 import {
   ApiCreatedResponseBody,
   ApiOkResponseBody,
-} from '../../common/swagger/api-response-body.decorator';
-import { ApplicationResponse } from './dto/application-response.dto';
+} from '../../../common/swagger/api-response-body.decorator';
+import { ApplicationResponse } from '../dto/application-response.dto';
 
 export const ApiCreateApplication = () =>
   applyDecorators(

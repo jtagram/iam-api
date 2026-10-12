@@ -7,7 +7,7 @@ import {
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 import { Public } from '../../common/guards/public.decorator';
 import { InternalUsersLoginService } from './internal-users-login.service';
-import { ApiInternalUserLogin } from './internal-users-login.swagger';
+import { ApiInternalUserLogin } from './swagger/internal-users-login.swagger';
 import { LoginInternalUserDto } from './dto/login-internal-user.dto';
 
 @ApiTags('Internal users')

@@ -7,8 +7,8 @@ import {
   ApiOperation,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { ApiApplicationHeaders } from '../../common/swagger/api-application-headers.decorator';
-import { ResponseLogin } from '../../common/dto/response-login.dto';
+import { ApiApplicationHeaders } from '../../../common/swagger/api-application-headers.decorator';
+import { ResponseLogin } from '../../../common/dto/response-login.dto';
 
 export const ApiInternalUserLogin = () =>
   applyDecorators(

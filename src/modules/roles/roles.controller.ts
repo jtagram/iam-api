@@ -15,7 +15,7 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { FindRolesQueryDto } from './dto/find-roles-query.dto';
 import { RolesService } from './roles.service';
 import { RoleResponse } from './dto/role-response.dto';
-import { ApiCreateRole, ApiFindRoles } from './roles.swagger';
+import { ApiCreateRole, ApiFindRoles } from './swagger/roles.swagger';
 
 @ApiTags('Roles')
 @Controller('roles')

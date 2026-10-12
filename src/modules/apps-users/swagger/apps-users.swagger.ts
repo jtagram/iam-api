@@ -6,17 +6,17 @@ import {
   ApiOperation,
   ApiParam,
 } from '@nestjs/swagger';
-import { ConnectionResponse } from '../../common/dto/connection-response.dto';
-import { ApiProtected } from '../../common/swagger/api-protected.decorator';
+import { ConnectionResponse } from '../../../common/dto/connection-response.dto';
+import { ApiProtected } from '../../../common/swagger/api-protected.decorator';
 import {
   ApiCreatedResponseBody,
   ApiOkResponseBody,
-} from '../../common/swagger/api-response-body.decorator';
-import { AppUserApplicationAssignmentResponse } from './dto/app-user-application-assignment-response.dto';
-import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
-import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
-import { AppUserResponse } from './dto/app-user-response.dto';
-import { AppUserRoleAssignmentResponse } from './dto/app-user-role-assignment-response.dto';
+} from '../../../common/swagger/api-response-body.decorator';
+import { AppUserApplicationAssignmentResponse } from '../dto/app-user-application-assignment-response.dto';
+import { AppUserApplicationRolesResponse } from '../dto/app-user-application-roles-response.dto';
+import { AppUserCreatedResponse } from '../dto/app-user-created-response.dto';
+import { AppUserResponse } from '../dto/app-user-response.dto';
+import { AppUserRoleAssignmentResponse } from '../dto/app-user-role-assignment-response.dto';
 
 const ApiUserIdParam = () =>
   ApiParam({

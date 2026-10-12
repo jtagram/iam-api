@@ -31,7 +31,7 @@ import {
   ApiAssignAppUserRole,
   ApiFindAppUserConnections,
   ApiCreateAppUserConnection,
-} from './apps-users.swagger';
+} from './swagger/apps-users.swagger';
 
 @ApiTags('Apps users')
 @Controller('apps-users')

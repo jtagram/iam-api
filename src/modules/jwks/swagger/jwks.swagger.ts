@@ -1,6 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation } from '@nestjs/swagger';
-import { JwksResponse } from './dto/jwks-response.dto';
+import { JwksResponse } from '../dto/jwks-response.dto';
 
 export const ApiGetJwks = () =>
   applyDecorators(
