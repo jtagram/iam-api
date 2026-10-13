@@ -8,16 +8,16 @@ import { AppUsersService } from './apps-users.service';
 import { AppUsersLoginService } from './apps-users-login.service';
 
 const jwtModule = JwtModule.registerAsync({
-  inject: [ConfigService],
-  useFactory: (configService: ConfigService) => ({
-    privateKey: configService.get<string>('JWT_PRIVATE_KEY'),
-    signOptions: { algorithm: 'RS256', keyid: JWT_KEY_ID },
-  }),
+	inject: [ConfigService],
+	useFactory: (configService: ConfigService) => ({
+		privateKey: configService.get<string>('JWT_PRIVATE_KEY'),
+		signOptions: { algorithm: 'RS256', keyid: JWT_KEY_ID },
+	}),
 });
 
 @Module({
-  imports: [jwtModule],
-  controllers: [AppUsersController, AppUsersLoginController],
-  providers: [AppUsersService, AppUsersLoginService],
+	imports: [jwtModule],
+	controllers: [AppUsersController, AppUsersLoginController],
+	providers: [AppUsersService, AppUsersLoginService],
 })
 export class AppUsersModule {}

@@ -1,23 +1,19 @@
-import {
-  BadRequestException,
-  createParamDecorator,
-  ExecutionContext,
-} from '@nestjs/common';
+import { BadRequestException, createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 
 export const ORIGIN_APPLICATION_HEADER = 'x-origin-application';
 export const TARGET_APPLICATION_HEADER = 'x-target-application';
 
 function requiredHeader(context: ExecutionContext, headerName: string): string {
-  const request = context.switchToHttp().getRequest<Request>();
-  const header = request.headers[headerName];
-  const value = Array.isArray(header) ? header[0] : header;
+	const request = context.switchToHttp().getRequest<Request>();
+	const header = request.headers[headerName];
+	const value = Array.isArray(header) ? header[0] : header;
 
-  if (!value || value.trim().length === 0) {
-    throw new BadRequestException(`${headerName} header is required`);
-  }
+	if (!value || value.trim().length === 0) {
+		throw new BadRequestException(`${headerName} header is required`);
+	}
 
-  return value.trim();
+	return value.trim();
 }
 
 /**
@@ -26,8 +22,8 @@ function requiredHeader(context: ExecutionContext, headerName: string): string {
  * missing or blank.
  */
 export const OriginApplication = createParamDecorator(
-  (_data: unknown, context: ExecutionContext): string =>
-    requiredHeader(context, ORIGIN_APPLICATION_HEADER),
+	(_data: unknown, context: ExecutionContext): string =>
+		requiredHeader(context, ORIGIN_APPLICATION_HEADER),
 );
 
 /**
@@ -36,6 +32,6 @@ export const OriginApplication = createParamDecorator(
  * missing or blank.
  */
 export const TargetApplication = createParamDecorator(
-  (_data: unknown, context: ExecutionContext): string =>
-    requiredHeader(context, TARGET_APPLICATION_HEADER),
+	(_data: unknown, context: ExecutionContext): string =>
+		requiredHeader(context, TARGET_APPLICATION_HEADER),
 );

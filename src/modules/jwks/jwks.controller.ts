@@ -7,12 +7,12 @@ import { ApiGetJwks } from './swagger/jwks.swagger';
 @ApiTags('JWKS')
 @Controller('.well-known')
 export class JwksController {
-  constructor(private readonly jwksService: JwksService) {}
+	constructor(private readonly jwksService: JwksService) {}
 
-  @Get('jwks.json')
-  @Public()
-  @ApiGetJwks()
-  getJwks() {
-    return this.jwksService.getJwks();
-  }
+	@Get('jwks.json')
+	@Public()
+	@ApiGetJwks()
+	getJwks() {
+		return this.jwksService.getJwks();
+	}
 }

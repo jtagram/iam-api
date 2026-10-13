@@ -2,10 +2,10 @@ import { ResponseBody } from '../../src/common/dto/response-body.dto';
 
 /** Error body produced by Nest's exception layer / the global filter. */
 export interface ErrorBody {
-  statusCode: number;
-  error?: string;
-  /** `string[]` for ValidationPipe failures, `string` otherwise. */
-  message: string | string[];
+	statusCode: number;
+	error?: string;
+	/** `string[]` for ValidationPipe failures, `string` otherwise. */
+	message: string | string[];
 }
 
 /**
@@ -13,10 +13,10 @@ export interface ErrorBody {
  * expects (the assertions in the test verify the actual values).
  */
 export function bodyOf<T>(res: { body: unknown }): T {
-  return res.body as T;
+	return res.body as T;
 }
 
 /** Typed `data` of the `ResponseBody<T>` envelope. */
 export function dataOf<T>(res: { body: unknown }): T {
-  return bodyOf<ResponseBody<T>>(res).data;
+	return bodyOf<ResponseBody<T>>(res).data;
 }

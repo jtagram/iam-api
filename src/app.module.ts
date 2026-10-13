@@ -19,33 +19,33 @@ import { JwksModule } from './modules/jwks/jwks.module';
 import { LoggerModule } from './instrument/logger/logger.module';
 
 const jwtModule = JwtModule.registerAsync({
-  inject: [ConfigService],
-  useFactory: (configService: ConfigService) => ({
-    publicKey: configService.get<string>('JWT_PUBLIC_KEY'),
-    verifyOptions: { algorithms: ['RS256'] },
-  }),
+	inject: [ConfigService],
+	useFactory: (configService: ConfigService) => ({
+		publicKey: configService.get<string>('JWT_PUBLIC_KEY'),
+		verifyOptions: { algorithms: ['RS256'] },
+	}),
 });
 
 @Module({
-  imports: [
-    EnvModule,
-    LoggerModule,
-    DatabaseModule,
-    jwtModule,
-    HealthModule,
-    JwksModule,
-    ApplicationsModule,
-    AppUsersModule,
-    RolesModule,
-    InternalUsersModule,
-  ],
-  providers: [
-    { provide: APP_FILTER, useClass: UnknownExceptionFilter },
-    { provide: APP_FILTER, useClass: DatabaseExceptionFilter },
-    { provide: APP_FILTER, useClass: HttpExceptionFilter },
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: ApplicationAccessGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
-  ],
+	imports: [
+		EnvModule,
+		LoggerModule,
+		DatabaseModule,
+		jwtModule,
+		HealthModule,
+		JwksModule,
+		ApplicationsModule,
+		AppUsersModule,
+		RolesModule,
+		InternalUsersModule,
+	],
+	providers: [
+		{ provide: APP_FILTER, useClass: UnknownExceptionFilter },
+		{ provide: APP_FILTER, useClass: DatabaseExceptionFilter },
+		{ provide: APP_FILTER, useClass: HttpExceptionFilter },
+		{ provide: APP_GUARD, useClass: JwtAuthGuard },
+		{ provide: APP_GUARD, useClass: ApplicationAccessGuard },
+		{ provide: APP_GUARD, useClass: RolesGuard },
+	],
 })
 export class AppModule {}

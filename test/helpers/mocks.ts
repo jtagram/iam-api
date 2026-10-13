@@ -6,15 +6,7 @@ import { jest } from '@jest/globals';
  * `mockResolvedValue` accept only `never` (it unwraps `PromiseLike<infer U>`).
  */
 type MockResult =
-  | Promise<unknown>
-  | object
-  | string
-  | number
-  | boolean
-  | bigint
-  | symbol
-  | null
-  | undefined;
+	Promise<unknown> | object | string | number | boolean | bigint | symbol | null | undefined;
 
 /**
  * Method-signature types are checked bivariantly, so implementations with
@@ -22,7 +14,7 @@ type MockResult =
  * asserted with `toHaveBeenCalledWith` stay unconstrained.
  */
 type MockSignature = {
-  call(...args: unknown[]): MockResult;
+	call(...args: unknown[]): MockResult;
 }['call'];
 
 export const mockFn = () => jest.fn<MockSignature>();
@@ -32,9 +24,6 @@ export const mockFn = () => jest.fn<MockSignature>();
  * the original with `jest.spyOn(...).mockImplementation` call it back via
  * `.call(this, ...)`, so the lack of binding is intended.
  */
-export function prototypeMethod<T extends object, K extends keyof T>(
-  prototype: T,
-  key: K,
-): T[K] {
-  return Reflect.get(prototype, key);
+export function prototypeMethod<T extends object, K extends keyof T>(prototype: T, key: K): T[K] {
+	return Reflect.get(prototype, key);
 }

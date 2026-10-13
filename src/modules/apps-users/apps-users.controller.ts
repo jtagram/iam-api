@@ -1,12 +1,12 @@
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseIntPipe,
-  Post,
+	Body,
+	Controller,
+	Get,
+	HttpCode,
+	HttpStatus,
+	Param,
+	ParseIntPipe,
+	Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UserAppEntity } from '../../common/database/user-application/user-app.entity';
@@ -24,79 +24,77 @@ import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
 import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
 import {
-  ApiCreateAppUser,
-  ApiFindAllAppUsers,
-  ApiFindAppUserApplications,
-  ApiAssignAppUserApplication,
-  ApiAssignAppUserRole,
-  ApiFindAppUserConnections,
-  ApiCreateAppUserConnection,
+	ApiCreateAppUser,
+	ApiFindAllAppUsers,
+	ApiFindAppUserApplications,
+	ApiAssignAppUserApplication,
+	ApiAssignAppUserRole,
+	ApiFindAppUserConnections,
+	ApiCreateAppUserConnection,
 } from './swagger/apps-users.swagger';
 
 @ApiTags('Apps users')
 @Controller('apps-users')
 @Roles(Role.ADMIN)
 export class AppUsersController {
-  constructor(private readonly appUsersService: AppUsersService) {}
+	constructor(private readonly appUsersService: AppUsersService) {}
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiCreateAppUser()
-  create(
-    @Body() dto: CreateAppUserDto,
-  ): Promise<ResponseBody<AppUserCreatedResponse>> {
-    return this.appUsersService.create(dto);
-  }
+	@Post()
+	@HttpCode(HttpStatus.CREATED)
+	@ApiCreateAppUser()
+	create(@Body() dto: CreateAppUserDto): Promise<ResponseBody<AppUserCreatedResponse>> {
+		return this.appUsersService.create(dto);
+	}
 
-  @Get()
-  @ApiFindAllAppUsers()
-  findAll(): Promise<ResponseBody<AppUserResponse[]>> {
-    return this.appUsersService.findAll();
-  }
+	@Get()
+	@ApiFindAllAppUsers()
+	findAll(): Promise<ResponseBody<AppUserResponse[]>> {
+		return this.appUsersService.findAll();
+	}
 
-  @Get(':id/applications')
-  @ApiFindAppUserApplications()
-  findAssignedApplications(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<ResponseBody<AppUserApplicationRolesResponse[]>> {
-    return this.appUsersService.findAssignedApplications(id);
-  }
+	@Get(':id/applications')
+	@ApiFindAppUserApplications()
+	findAssignedApplications(
+		@Param('id', ParseIntPipe) id: number,
+	): Promise<ResponseBody<AppUserApplicationRolesResponse[]>> {
+		return this.appUsersService.findAssignedApplications(id);
+	}
 
-  @Post(':id/applications')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiAssignAppUserApplication()
-  assignApplication(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AssignApplicationDto,
-  ): Promise<ResponseBody<UserAppEntity>> {
-    return this.appUsersService.assignApplication(id, dto);
-  }
+	@Post(':id/applications')
+	@HttpCode(HttpStatus.CREATED)
+	@ApiAssignAppUserApplication()
+	assignApplication(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: AssignApplicationDto,
+	): Promise<ResponseBody<UserAppEntity>> {
+		return this.appUsersService.assignApplication(id, dto);
+	}
 
-  @Post(':id/roles')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiAssignAppUserRole()
-  assignRole(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AssignRoleDto,
-  ): Promise<ResponseBody<UserRoleEntity>> {
-    return this.appUsersService.assignRole(id, dto);
-  }
+	@Post(':id/roles')
+	@HttpCode(HttpStatus.CREATED)
+	@ApiAssignAppUserRole()
+	assignRole(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: AssignRoleDto,
+	): Promise<ResponseBody<UserRoleEntity>> {
+		return this.appUsersService.assignRole(id, dto);
+	}
 
-  @Get(':id/connections')
-  @ApiFindAppUserConnections()
-  findConnections(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<ResponseBody<ConnectionResponse[]>> {
-    return this.appUsersService.findConnections(id);
-  }
+	@Get(':id/connections')
+	@ApiFindAppUserConnections()
+	findConnections(
+		@Param('id', ParseIntPipe) id: number,
+	): Promise<ResponseBody<ConnectionResponse[]>> {
+		return this.appUsersService.findConnections(id);
+	}
 
-  @Post(':id/connections')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiCreateAppUserConnection()
-  createConnection(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: CreateConnectionDto,
-  ): Promise<ResponseBody<ConnectionResponse>> {
-    return this.appUsersService.createConnection(id, dto);
-  }
+	@Post(':id/connections')
+	@HttpCode(HttpStatus.CREATED)
+	@ApiCreateAppUserConnection()
+	createConnection(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() dto: CreateConnectionDto,
+	): Promise<ResponseBody<ConnectionResponse>> {
+		return this.appUsersService.createConnection(id, dto);
+	}
 }

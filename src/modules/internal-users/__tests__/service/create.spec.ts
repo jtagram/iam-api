@@ -7,90 +7,88 @@ import { InternalUsersRepository } from '../../../../common/database/internal-us
 import { InternalUsersService } from '../../internal-users.service';
 
 const dto = {
-  name: 'Ada',
-  lastname: 'Lovelace',
-  email: 'ada@example.com',
-  password: 'correct-horse',
+	name: 'Ada',
+	lastname: 'Lovelace',
+	email: 'ada@example.com',
+	password: 'correct-horse',
 };
 
 describe('InternalUsersService.create', () => {
-  let repository: {
-    findByEmail: ReturnType<typeof mockFn>;
-    createInternalUser: ReturnType<typeof mockFn>;
-  };
-  let service: InternalUsersService;
+	let repository: {
+		findByEmail: ReturnType<typeof mockFn>;
+		createInternalUser: ReturnType<typeof mockFn>;
+	};
+	let service: InternalUsersService;
 
-  beforeEach(() => {
-    repository = { findByEmail: mockFn(), createInternalUser: mockFn() };
-    service = new InternalUsersService(
-      repository as unknown as InternalUsersRepository,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
-    repository.findByEmail.mockResolvedValue(null);
-    repository.createInternalUser.mockImplementation(
-      (entity: InternalUserEntity) => Promise.resolve(Object.assign(entity, { id: 4 })),
-    );
-  });
+	beforeEach(() => {
+		repository = { findByEmail: mockFn(), createInternalUser: mockFn() };
+		service = new InternalUsersService(
+			repository as unknown as InternalUsersRepository,
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+		);
+		repository.findByEmail.mockResolvedValue(null);
+		repository.createInternalUser.mockImplementation((entity: InternalUserEntity) =>
+			Promise.resolve(Object.assign(entity, { id: 4 })),
+		);
+	});
 
-  it('throws Conflict when the email is already in use', async () => {
-    repository.findByEmail.mockResolvedValue({ id: 1 });
+	it('throws Conflict when the email is already in use', async () => {
+		repository.findByEmail.mockResolvedValue({ id: 1 });
 
-    await expect(service.create(dto)).rejects.toThrow(
-      new ConflictException('Email already in use'),
-    );
-    expect(repository.findByEmail).toHaveBeenCalledWith('ada@example.com');
-  });
+		await expect(service.create(dto)).rejects.toThrow(
+			new ConflictException('Email already in use'),
+		);
+		expect(repository.findByEmail).toHaveBeenCalledWith('ada@example.com');
+	});
 
-  it('does not create the user when the email is in use', async () => {
-    repository.findByEmail.mockResolvedValue({ id: 1 });
+	it('does not create the user when the email is in use', async () => {
+		repository.findByEmail.mockResolvedValue({ id: 1 });
 
-    await service.create(dto).catch(() => undefined);
+		await service.create(dto).catch(() => undefined);
 
-    expect(repository.createInternalUser).not.toHaveBeenCalled();
-  });
+		expect(repository.createInternalUser).not.toHaveBeenCalled();
+	});
 
-  it('persists an entity with the dto data and a hashed password', async () => {
-    await service.create(dto);
+	it('persists an entity with the dto data and a hashed password', async () => {
+		await service.create(dto);
 
-    const entity = repository.createInternalUser.mock.calls[0][0] as InternalUserEntity;
-    expect(entity).toBeInstanceOf(InternalUserEntity);
-    expect(entity).toMatchObject({
-      name: 'Ada',
-      lastname: 'Lovelace',
-      email: 'ada@example.com',
-    });
-  });
+		const entity = repository.createInternalUser.mock.calls[0][0] as InternalUserEntity;
+		expect(entity).toBeInstanceOf(InternalUserEntity);
+		expect(entity).toMatchObject({
+			name: 'Ada',
+			lastname: 'Lovelace',
+			email: 'ada@example.com',
+		});
+	});
 
-  it('stores a bcrypt hash with cost 10, never the plaintext password', async () => {
-    await service.create(dto);
+	it('stores a bcrypt hash with cost 10, never the plaintext password', async () => {
+		await service.create(dto);
 
-    const entity = repository.createInternalUser.mock.calls[0][0] as InternalUserEntity;
-    expect(entity.password).not.toBe('correct-horse');
-    expect(entity.password).toMatch(/^\$2[aby]\$10\$/);
-    await expect(
-      bcrypt.compare('correct-horse', entity.password),
-    ).resolves.toBe(true);
-  });
+		const entity = repository.createInternalUser.mock.calls[0][0] as InternalUserEntity;
+		expect(entity.password).not.toBe('correct-horse');
+		expect(entity.password).toMatch(/^\$2[aby]\$10\$/);
+		await expect(bcrypt.compare('correct-horse', entity.password)).resolves.toBe(true);
+	});
 
-  it('returns the created user without the password', async () => {
-    const result = await service.create(dto);
+	it('returns the created user without the password', async () => {
+		const result = await service.create(dto);
 
-    expect(result).toEqual({
-      id: 4,
-      name: 'Ada',
-      lastname: 'Lovelace',
-      email: 'ada@example.com',
-    });
-  });
+		expect(result).toEqual({
+			id: 4,
+			name: 'Ada',
+			lastname: 'Lovelace',
+			email: 'ada@example.com',
+		});
+	});
 
-  it('propagates a repository failure', async () => {
-    const failure = new Error('db down');
-    repository.createInternalUser.mockRejectedValue(failure);
+	it('propagates a repository failure', async () => {
+		const failure = new Error('db down');
+		repository.createInternalUser.mockRejectedValue(failure);
 
-    await expect(service.create(dto)).rejects.toBe(failure);
-  });
+		await expect(service.create(dto)).rejects.toBe(failure);
+	});
 });

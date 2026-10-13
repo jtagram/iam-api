@@ -5,32 +5,30 @@ import { AppUserConnectionEntity } from './app-user-connection.entity';
 
 @Injectable()
 export class AppUserConnectionsRepository {
-  constructor(
-    @InjectRepository(AppUserConnectionEntity)
-    private readonly repository: Repository<AppUserConnectionEntity>,
-  ) {}
+	constructor(
+		@InjectRepository(AppUserConnectionEntity)
+		private readonly repository: Repository<AppUserConnectionEntity>,
+	) {}
 
-  createConnection(
-    entity: AppUserConnectionEntity,
-  ): Promise<AppUserConnectionEntity> {
-    const created = this.repository.create(entity);
-    return this.repository.save(created);
-  }
+	createConnection(entity: AppUserConnectionEntity): Promise<AppUserConnectionEntity> {
+		const created = this.repository.create(entity);
+		return this.repository.save(created);
+	}
 
-  existsForAppUserAndApplications(
-    appUserId: number,
-    originApplicationId: number,
-    destinationApplicationId: number,
-  ): Promise<boolean> {
-    return this.repository.exists({
-      where: { appUserId, originApplicationId, destinationApplicationId },
-    });
-  }
+	existsForAppUserAndApplications(
+		appUserId: number,
+		originApplicationId: number,
+		destinationApplicationId: number,
+	): Promise<boolean> {
+		return this.repository.exists({
+			where: { appUserId, originApplicationId, destinationApplicationId },
+		});
+	}
 
-  findAllByAppUserId(appUserId: number): Promise<AppUserConnectionEntity[]> {
-    return this.repository.find({
-      where: { appUserId },
-      order: { id: 'ASC' },
-    });
-  }
+	findAllByAppUserId(appUserId: number): Promise<AppUserConnectionEntity[]> {
+		return this.repository.find({
+			where: { appUserId },
+			order: { id: 'ASC' },
+		});
+	}
 }

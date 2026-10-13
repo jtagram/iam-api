@@ -5,30 +5,26 @@ import { InternalUserAppEntity } from './internal-user-app.entity';
 
 @Injectable()
 export class InternalUserAppsRepository {
-  constructor(
-    @InjectRepository(InternalUserAppEntity)
-    private readonly repository: Repository<InternalUserAppEntity>,
-  ) {}
+	constructor(
+		@InjectRepository(InternalUserAppEntity)
+		private readonly repository: Repository<InternalUserAppEntity>,
+	) {}
 
-  createAssignment(
-    entity: InternalUserAppEntity,
-  ): Promise<InternalUserAppEntity> {
-    const created = this.repository.create(entity);
-    return this.repository.save(created);
-  }
+	createAssignment(entity: InternalUserAppEntity): Promise<InternalUserAppEntity> {
+		const created = this.repository.create(entity);
+		return this.repository.save(created);
+	}
 
-  existsForInternalUserAndApplication(
-    internalUserId: number,
-    applicationId: number,
-  ): Promise<boolean> {
-    return this.repository.exists({
-      where: { internalUserId, applicationId },
-    });
-  }
+	existsForInternalUserAndApplication(
+		internalUserId: number,
+		applicationId: number,
+	): Promise<boolean> {
+		return this.repository.exists({
+			where: { internalUserId, applicationId },
+		});
+	}
 
-  findAllByInternalUserId(
-    internalUserId: number,
-  ): Promise<InternalUserAppEntity[]> {
-    return this.repository.find({ where: { internalUserId } });
-  }
+	findAllByInternalUserId(internalUserId: number): Promise<InternalUserAppEntity[]> {
+		return this.repository.find({ where: { internalUserId } });
+	}
 }

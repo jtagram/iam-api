@@ -1,165 +1,154 @@
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from '@jest/globals';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 import { createInternalUser, SeededIam, seedIamAdmin } from '../helpers/seed';
 import { InternalUserEntity } from '../../src/common/database/internal-user/internal-user.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import {
-  adminAuthorization,
-  authorizationHeaderFor,
-  authorizationHeaderForClaims,
-  authorizationSignedByAnotherKey,
-  expiredAuthorization,
+	adminAuthorization,
+	authorizationHeaderFor,
+	authorizationHeaderForClaims,
+	authorizationSignedByAnotherKey,
+	expiredAuthorization,
 } from '../helpers/test-auth';
 import { bodyOf, ErrorBody } from '../helpers/response-types';
 import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
 
 describe('GET /internal-users (e2e)', () => {
-  let testApp: AppTestApp;
-  let iam: SeededIam;
+	let testApp: AppTestApp;
+	let iam: SeededIam;
 
-  beforeAll(async () => {
-    testApp = await createAppTestApp();
-  });
+	beforeAll(async () => {
+		testApp = await createAppTestApp();
+	});
 
-  beforeEach(async () => {
-    await testApp.resetTables();
-    iam = await seedIamAdmin(testApp.dataSource);
-  });
+	beforeEach(async () => {
+		await testApp.resetTables();
+		iam = await seedIamAdmin(testApp.dataSource);
+	});
 
-  afterAll(async () => {
-    await testApp.close();
-  });
+	afterAll(async () => {
+		await testApp.close();
+	});
 
-  function send(authorization: string | null = adminAuthorization()) {
-    const req = testApp.http().get('/internal-users');
-    if (authorization) {
-      req.set('Authorization', authorization);
-    }
-    return req;
-  }
+	function send(authorization: string | null = adminAuthorization()) {
+		const req = testApp.http().get('/internal-users');
+		if (authorization) {
+			req.set('Authorization', authorization);
+		}
+		return req;
+	}
 
-  it('returns 200 with the internal users as a bare array', async () => {
-    const response = await send().expect(200);
+	it('returns 200 with the internal users as a bare array', async () => {
+		const response = await send().expect(200);
 
-    expect(response.body).toEqual([
-      {
-        id: iam.adminUser.id,
-        name: 'Admin',
-        lastname: 'Istrator',
-        email: 'admin@example.com',
-      },
-    ]);
-  });
+		expect(response.body).toEqual([
+			{
+				id: iam.adminUser.id,
+				name: 'Admin',
+				lastname: 'Istrator',
+				email: 'admin@example.com',
+			},
+		]);
+	});
 
-  it('returns every internal user', async () => {
-    await createInternalUser(testApp.dataSource, { email: 'a@example.com' });
-    await createInternalUser(testApp.dataSource, { email: 'b@example.com' });
+	it('returns every internal user', async () => {
+		await createInternalUser(testApp.dataSource, { email: 'a@example.com' });
+		await createInternalUser(testApp.dataSource, { email: 'b@example.com' });
 
-    const response = await send().expect(200);
+		const response = await send().expect(200);
 
-    expect(bodyOf<InternalUserCreatedResponse[]>(response).map((u: { email: string }) => u.email).sort()).toEqual(
-      ['a@example.com', 'admin@example.com', 'b@example.com'],
-    );
-  });
+		expect(
+			bodyOf<InternalUserCreatedResponse[]>(response)
+				.map((u: { email: string }) => u.email)
+				.sort(),
+		).toEqual(['a@example.com', 'admin@example.com', 'b@example.com']);
+	});
 
-  it('never exposes the stored password hash', async () => {
-    const response = await send().expect(200);
+	it('never exposes the stored password hash', async () => {
+		const response = await send().expect(200);
 
-    expect(Object.keys(bodyOf<InternalUserCreatedResponse[]>(response)[0]).sort()).toEqual([
-      'email',
-      'id',
-      'lastname',
-      'name',
-    ]);
-    expect(JSON.stringify(response.body)).not.toContain('$2');
-  });
+		expect(Object.keys(bodyOf<InternalUserCreatedResponse[]>(response)[0]).sort()).toEqual([
+			'email',
+			'id',
+			'lastname',
+			'name',
+		]);
+		expect(JSON.stringify(response.body)).not.toContain('$2');
+	});
 
-  it('returns an empty array when there are no internal users', async () => {
-    await testApp.dataSource.getRepository(InternalUserEntity).clear();
+	it('returns an empty array when there are no internal users', async () => {
+		await testApp.dataSource.getRepository(InternalUserEntity).clear();
 
-    const response = await send().expect(200);
+		const response = await send().expect(200);
 
-    expect(response.body).toEqual([]);
-  });
+		expect(response.body).toEqual([]);
+	});
 
-  describe('authorization', () => {
-    it('returns 401 without a bearer token', async () => {
-      const response = await send(null).expect(401);
+	describe('authorization', () => {
+		it('returns 401 without a bearer token', async () => {
+			const response = await send(null).expect(401);
 
-      expect(response.body).toEqual({
-        statusCode: 401,
-        error: 'Unauthorized',
-        message: 'Missing or malformed bearer token',
-      });
-    });
+			expect(response.body).toEqual({
+				statusCode: 401,
+				error: 'Unauthorized',
+				message: 'Missing or malformed bearer token',
+			});
+		});
 
-    it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
-      const response = await send('Basic dXNlcjpwYXNz').expect(401);
+		it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
+			const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-      expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
-    });
+			expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
+		});
 
-    it('returns 401 when the token is not a JWT', async () => {
-      const response = await send('Bearer not-a-jwt').expect(401);
+		it('returns 401 when the token is not a JWT', async () => {
+			const response = await send('Bearer not-a-jwt').expect(401);
 
-      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
-    });
+			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+		});
 
-    it('returns 401 when the token is signed with a key the app does not trust', async () => {
-      const response = await send(authorizationSignedByAnotherKey()).expect(
-        401,
-      );
+		it('returns 401 when the token is signed with a key the app does not trust', async () => {
+			const response = await send(authorizationSignedByAnotherKey()).expect(401);
 
-      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
-    });
+			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+		});
 
-    it('returns 401 when the token is expired', async () => {
-      const response = await send(expiredAuthorization()).expect(401);
+		it('returns 401 when the token is expired', async () => {
+			const response = await send(expiredAuthorization()).expect(401);
 
-      expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
-    });
+			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+		});
 
-    it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
-      const response = await send(
-        authorizationHeaderFor({ applicationName: 'ticket-hub' }),
-      ).expect(403);
+		it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
+			const response = await send(authorizationHeaderFor({ applicationName: 'ticket-hub' })).expect(
+				403,
+			);
 
-      expect(bodyOf<ErrorBody>(response).message).toBe(
-        'This token was not issued for the iam application',
-      );
-    });
+			expect(bodyOf<ErrorBody>(response).message).toBe(
+				'This token was not issued for the iam application',
+			);
+		});
 
-    it('returns 403 when the token only has a role other than ADMIN', async () => {
-      const response = await send(
-        authorizationHeaderFor({ roles: ['VIEWER'] }),
-      ).expect(403);
+		it('returns 403 when the token only has a role other than ADMIN', async () => {
+			const response = await send(authorizationHeaderFor({ roles: ['VIEWER'] })).expect(403);
 
-      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
-    });
+			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+		});
 
-    it('returns 403 when the token carries no roles (deny by default)', async () => {
-      const response = await send(authorizationHeaderFor({ roles: [] })).expect(
-        403,
-      );
+		it('returns 403 when the token carries no roles (deny by default)', async () => {
+			const response = await send(authorizationHeaderFor({ roles: [] })).expect(403);
 
-      expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
-    });
+			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+		});
 
-    it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {
-      const response = await send(
-        authorizationHeaderForClaims({ email: 'admin@example.com' }),
-      ).expect(500);
+		it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {
+			const response = await send(
+				authorizationHeaderForClaims({ email: 'admin@example.com' }),
+			).expect(500);
 
-      expect(response.body).toEqual({
-        statusCode: 500,
-        message: 'An unexpected error occurred. Please try again later.',
-      });
-    });
-  });
+			expect(response.body).toEqual({
+				statusCode: 500,
+				message: 'An unexpected error occurred. Please try again later.',
+			});
+		});
+	});
 });

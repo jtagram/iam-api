@@ -8,5 +8,5 @@ import { AppsPayload } from './apps-payload';
  * other way around).
  */
 export interface AuthenticatedUser {
-  apps: AppsPayload;
+	apps: AppsPayload;
 }

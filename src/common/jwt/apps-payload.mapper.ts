@@ -10,21 +10,21 @@ import { AppsPayload } from './apps-payload';
  * `AppUserMapper`/`RoleMapper`/`InternalUserMapper` in this project.
  */
 export class AppsPayloadMapper {
-  static buildAppsPayload(
-    application: { id: number; name: string; description: string },
-    roles: Array<{ id: number; name: string; description: string }>,
-  ): AppsPayload {
-    return {
-      application: {
-        id: application.id,
-        name: application.name,
-        description: application.description,
-        roles: roles.map((role) => ({
-          id: role.id,
-          name: role.name,
-          description: role.description,
-        })),
-      },
-    };
-  }
+	static buildAppsPayload(
+		application: { id: number; name: string; description: string },
+		roles: Array<{ id: number; name: string; description: string }>,
+	): AppsPayload {
+		return {
+			application: {
+				id: application.id,
+				name: application.name,
+				description: application.description,
+				roles: roles.map((role) => ({
+					id: role.id,
+					name: role.name,
+					description: role.description,
+				})),
+			},
+		};
+	}
 }

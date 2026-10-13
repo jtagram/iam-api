@@ -5,40 +5,37 @@ import { RoleEntity } from './role.entity';
 
 @Injectable()
 export class RolesRepository {
-  constructor(
-    @InjectRepository(RoleEntity)
-    private readonly repository: Repository<RoleEntity>,
-  ) {}
+	constructor(
+		@InjectRepository(RoleEntity)
+		private readonly repository: Repository<RoleEntity>,
+	) {}
 
-  createRole(role: RoleEntity): Promise<RoleEntity> {
-    const entity = this.repository.create(role);
-    return this.repository.save(entity);
-  }
+	createRole(role: RoleEntity): Promise<RoleEntity> {
+		const entity = this.repository.create(role);
+		return this.repository.save(entity);
+	}
 
-  findById(id: number): Promise<RoleEntity | null> {
-    return this.repository.findOne({ where: { id } });
-  }
+	findById(id: number): Promise<RoleEntity | null> {
+		return this.repository.findOne({ where: { id } });
+	}
 
-  findAllByApplicationId(applicationId: number): Promise<RoleEntity[]> {
-    return this.repository.find({ where: { applicationId } });
-  }
+	findAllByApplicationId(applicationId: number): Promise<RoleEntity[]> {
+		return this.repository.find({ where: { applicationId } });
+	}
 
-  findByIds(ids: number[]): Promise<RoleEntity[]> {
-    if (ids.length === 0) {
-      return Promise.resolve([]);
-    }
-    return this.repository.find({ where: { id: In(ids) } });
-  }
+	findByIds(ids: number[]): Promise<RoleEntity[]> {
+		if (ids.length === 0) {
+			return Promise.resolve([]);
+		}
+		return this.repository.find({ where: { id: In(ids) } });
+	}
 
-  findAllByApplicationIdAndNames(
-    applicationId: number,
-    names: string[],
-  ): Promise<RoleEntity[]> {
-    if (names.length === 0) {
-      return Promise.resolve([]);
-    }
-    return this.repository.find({
-      where: { applicationId, name: In(names) },
-    });
-  }
+	findAllByApplicationIdAndNames(applicationId: number, names: string[]): Promise<RoleEntity[]> {
+		if (names.length === 0) {
+			return Promise.resolve([]);
+		}
+		return this.repository.find({
+			where: { applicationId, name: In(names) },
+		});
+	}
 }

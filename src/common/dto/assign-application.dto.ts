@@ -12,10 +12,10 @@ import { IsInt } from 'class-validator';
  * belong to.
  */
 export class AssignApplicationDto {
-  @ApiProperty({
-    description: 'Identifier of the application to assign.',
-    example: 1,
-  })
-  @IsInt()
-  applicationId: number;
+	@ApiProperty({
+		description: 'Identifier of the application to assign.',
+		example: 1,
+	})
+	@IsInt()
+	applicationId: number;
 }

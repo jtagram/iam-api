@@ -3,44 +3,38 @@ import { IS_PUBLIC_KEY, Public } from '../public.decorator';
 import { prototypeMethod } from '../../../../test/helpers/mocks';
 
 describe('Public', () => {
-  it('exposes the metadata key used by the guards', () => {
-    expect(IS_PUBLIC_KEY).toBe('isPublic');
-  });
+	it('exposes the metadata key used by the guards', () => {
+		expect(IS_PUBLIC_KEY).toBe('isPublic');
+	});
 
-  it('marks a handler as public', () => {
-    class Controller {
-      @Public()
-      handler() {}
-    }
+	it('marks a handler as public', () => {
+		class Controller {
+			@Public()
+			handler() {}
+		}
 
-    expect(
-      Reflect.getMetadata(
-        IS_PUBLIC_KEY,
-        prototypeMethod(Controller.prototype, 'handler'),
-      ),
-    ).toBe(true);
-  });
+		expect(
+			Reflect.getMetadata(IS_PUBLIC_KEY, prototypeMethod(Controller.prototype, 'handler')),
+		).toBe(true);
+	});
 
-  it('marks a whole controller class as public', () => {
-    @Public()
-    class Controller {}
+	it('marks a whole controller class as public', () => {
+		@Public()
+		class Controller {}
 
-    expect(Reflect.getMetadata(IS_PUBLIC_KEY, Controller)).toBe(true);
-  });
+		expect(Reflect.getMetadata(IS_PUBLIC_KEY, Controller)).toBe(true);
+	});
 
-  it('does not mark handlers that were not decorated', () => {
-    class Controller {
-      @Public()
-      open() {}
+	it('does not mark handlers that were not decorated', () => {
+		class Controller {
+			@Public()
+			open() {}
 
-      closed() {}
-    }
+			closed() {}
+		}
 
-    expect(
-      Reflect.getMetadata(
-        IS_PUBLIC_KEY,
-        prototypeMethod(Controller.prototype, 'closed'),
-      ),
-    ).toBeUndefined();
-  });
+		expect(
+			Reflect.getMetadata(IS_PUBLIC_KEY, prototypeMethod(Controller.prototype, 'closed')),
+		).toBeUndefined();
+	});
 });

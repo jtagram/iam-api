@@ -8,18 +8,17 @@ import { IsInt } from 'class-validator';
  * same shape.
  */
 export class CreateConnectionDto {
-  @ApiProperty({
-    description: 'Identifier of the origin application.',
-    example: 1,
-  })
-  @IsInt()
-  originApplicationId: number;
+	@ApiProperty({
+		description: 'Identifier of the origin application.',
+		example: 1,
+	})
+	@IsInt()
+	originApplicationId: number;
 
-  @ApiProperty({
-    description:
-      'Identifier of the destination application. Must differ from the origin.',
-    example: 2,
-  })
-  @IsInt()
-  destinationApplicationId: number;
+	@ApiProperty({
+		description: 'Identifier of the destination application. Must differ from the origin.',
+		example: 2,
+	})
+	@IsInt()
+	destinationApplicationId: number;
 }

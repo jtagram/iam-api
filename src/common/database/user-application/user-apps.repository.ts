@@ -5,24 +5,21 @@ import { UserAppEntity } from './user-app.entity';
 
 @Injectable()
 export class UserAppsRepository {
-  constructor(
-    @InjectRepository(UserAppEntity)
-    private readonly repository: Repository<UserAppEntity>,
-  ) {}
+	constructor(
+		@InjectRepository(UserAppEntity)
+		private readonly repository: Repository<UserAppEntity>,
+	) {}
 
-  createAssignment(entity: UserAppEntity): Promise<UserAppEntity> {
-    const created = this.repository.create(entity);
-    return this.repository.save(created);
-  }
+	createAssignment(entity: UserAppEntity): Promise<UserAppEntity> {
+		const created = this.repository.create(entity);
+		return this.repository.save(created);
+	}
 
-  existsForAppUserAndApplication(
-    appUserId: number,
-    applicationId: number,
-  ): Promise<boolean> {
-    return this.repository.exists({ where: { appUserId, applicationId } });
-  }
+	existsForAppUserAndApplication(appUserId: number, applicationId: number): Promise<boolean> {
+		return this.repository.exists({ where: { appUserId, applicationId } });
+	}
 
-  findAllByAppUserId(appUserId: number): Promise<UserAppEntity[]> {
-    return this.repository.find({ where: { appUserId } });
-  }
+	findAllByAppUserId(appUserId: number): Promise<UserAppEntity[]> {
+		return this.repository.find({ where: { appUserId } });
+	}
 }

@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ResponseBody } from '../../common/dto/response-body.dto';
 import { Role } from '../../common/database/role/role.enum';
@@ -21,20 +13,18 @@ import { ApiCreateRole, ApiFindRoles } from './swagger/roles.swagger';
 @Controller('roles')
 @Roles(Role.ADMIN)
 export class RolesController {
-  constructor(private readonly rolesService: RolesService) {}
+	constructor(private readonly rolesService: RolesService) {}
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiCreateRole()
-  create(@Body() dto: CreateRoleDto): Promise<ResponseBody<RoleResponse>> {
-    return this.rolesService.create(dto);
-  }
+	@Post()
+	@HttpCode(HttpStatus.CREATED)
+	@ApiCreateRole()
+	create(@Body() dto: CreateRoleDto): Promise<ResponseBody<RoleResponse>> {
+		return this.rolesService.create(dto);
+	}
 
-  @Get()
-  @ApiFindRoles()
-  findAll(
-    @Query() query: FindRolesQueryDto,
-  ): Promise<ResponseBody<RoleResponse[]>> {
-    return this.rolesService.findAllByApplicationId(query);
-  }
+	@Get()
+	@ApiFindRoles()
+	findAll(@Query() query: FindRolesQueryDto): Promise<ResponseBody<RoleResponse[]>> {
+		return this.rolesService.findAllByApplicationId(query);
+	}
 }

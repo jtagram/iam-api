@@ -9,10 +9,10 @@ import { ApiProperty } from '@nestjs/swagger';
  * diverge, split this back into a per-module DTO at that point.
  */
 export class ResponseLogin {
-  @ApiProperty({ description: 'Signed JWT access token.' })
-  access_token: string;
+	@ApiProperty({ description: 'Signed JWT access token.' })
+	access_token: string;
 
-  constructor(access_token: string) {
-    this.access_token = access_token;
-  }
+	constructor(access_token: string) {
+		this.access_token = access_token;
+	}
 }
