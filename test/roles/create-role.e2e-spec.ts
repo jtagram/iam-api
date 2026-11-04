@@ -58,6 +58,7 @@ describe('POST /roles (e2e)', () => {
 			const response = await send().expect(201);
 
 			expect(response.body).toEqual({
+				ok: true,
 				msg: 'Role created successfully',
 				data: {
 					id: expect.any(Number),
@@ -110,14 +111,10 @@ describe('POST /roles (e2e)', () => {
 		it('returns 400 when the body is empty', async () => {
 			const response = await send(adminAuthorization(), {}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).statusCode).toBe(400);
-			expect(bodyOf<ErrorBody>(response).message).toEqual(
-				expect.arrayContaining([
-					'applicationId must be an integer number',
-					'name must be a string',
-					'description must be a string',
-				]),
-			);
+			expect(bodyOf<ErrorBody>(response).ok).toBe(false);
+			expect(bodyOf<ErrorBody>(response).msg).toContain('applicationId must be an integer number');
+			expect(bodyOf<ErrorBody>(response).msg).toContain('name must be a string');
+			expect(bodyOf<ErrorBody>(response).msg).toContain('description must be a string');
 		});
 
 		it('returns 400 when applicationId is a numeric string (no implicit conversion in the body)', async () => {
@@ -126,9 +123,7 @@ describe('POST /roles (e2e)', () => {
 				validBody({ applicationId: String(iam.iamApplication.id) }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
-				'applicationId must be an integer number',
-			]);
+			expect(bodyOf<ErrorBody>(response).msg).toBe('applicationId must be an integer number');
 		});
 
 		it('returns 400 when applicationId is not an integer', async () => {
@@ -140,9 +135,9 @@ describe('POST /roles (e2e)', () => {
 				400,
 			);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'name must be shorter than or equal to 20 characters',
-			]);
+			);
 		});
 
 		it('returns 400 when the description is longer than 200 characters', async () => {
@@ -151,9 +146,9 @@ describe('POST /roles (e2e)', () => {
 				validBody({ description: 'd'.repeat(201) }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'description must be shorter than or equal to 200 characters',
-			]);
+			);
 		});
 
 		it('does not persist anything when validation fails', async () => {
@@ -170,11 +165,7 @@ describe('POST /roles (e2e)', () => {
 				validBody({ applicationId: 999999 }),
 			).expect(404);
 
-			expect(response.body).toEqual({
-				statusCode: 404,
-				error: 'Not Found',
-				message: 'Application not found',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Application not found', data: null });
 			expect(await roleCount()).toBe(1);
 		});
 	});
@@ -186,9 +177,9 @@ describe('POST /roles (e2e)', () => {
 			const response = await send().expect(409);
 
 			expect(response.body).toEqual({
-				statusCode: 409,
-				error: 'Conflict',
-				message: 'A role with this name already exists for this application',
+				ok: false,
+				msg: 'A role with this name already exists for this application',
+				data: null,
 			});
 			expect(await roleCount()).toBe(2);
 		});
@@ -217,8 +208,9 @@ describe('POST /roles (e2e)', () => {
 				expect([first.status, second.status].sort()).toEqual([201, 500]);
 				const failed = first.status === 500 ? first : second;
 				expect(failed.body).toEqual({
-					statusCode: 500,
-					message: 'An unexpected error occurred. Please try again later.',
+					ok: false,
+					msg: 'An unexpected error occurred. Please try again later.',
+					data: null,
 				});
 				const rows = await testApp.dataSource.getRepository(RoleEntity).findBy({ name: 'EDITOR' });
 				expect(rows).toHaveLength(1);
@@ -233,34 +225,34 @@ describe('POST /roles (e2e)', () => {
 			const response = await send(null).expect(401);
 
 			expect(response.body).toEqual({
-				statusCode: 401,
-				error: 'Unauthorized',
-				message: 'Missing or malformed bearer token',
+				ok: false,
+				msg: 'Missing or malformed bearer token',
+				data: null,
 			});
 		});
 
 		it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
 			const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Missing or malformed bearer token');
 		});
 
 		it('returns 401 when the token is not a JWT', async () => {
 			const response = await send('Bearer not-a-jwt').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is signed with a key the app does not trust', async () => {
 			const response = await send(authorizationSignedByAnotherKey()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is expired', async () => {
 			const response = await send(expiredAuthorization()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -268,7 +260,7 @@ describe('POST /roles (e2e)', () => {
 				403,
 			);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'This token was not issued for the iam application',
 			);
 		});
@@ -276,13 +268,13 @@ describe('POST /roles (e2e)', () => {
 		it('returns 403 when the token only has a role other than ADMIN', async () => {
 			const response = await send(authorizationHeaderFor({ roles: ['VIEWER'] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 403 when the token carries no roles (deny by default)', async () => {
 			const response = await send(authorizationHeaderFor({ roles: [] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {
@@ -291,8 +283,9 @@ describe('POST /roles (e2e)', () => {
 			).expect(500);
 
 			expect(response.body).toEqual({
-				statusCode: 500,
-				message: 'An unexpected error occurred. Please try again later.',
+				ok: false,
+				msg: 'An unexpected error occurred. Please try again later.',
+				data: null,
 			});
 		});
 	});

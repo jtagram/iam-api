@@ -14,8 +14,10 @@ import { InternalUserRolesRepository } from '../../common/database/internal-user
 import { InternalUsersRepository } from '../../common/database/internal-user/internal-users.repository';
 import { RolesRepository } from '../../common/database/role/roles.repository';
 import { AppsPayloadMapper } from '../../common/jwt/apps-payload.mapper';
+import { ResponseBody } from '../../common/dto/response-body.dto';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 import { LoginInternalUserDto } from './dto/login-internal-user.dto';
+import { InternalUserMapper } from './internal-user.mapper';
 import { InternalUserPayloadJwt } from './internal-user-payload-jwt';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid credentials';
@@ -49,7 +51,7 @@ export class InternalUsersLoginService {
 		dto: LoginInternalUserDto,
 		originApplicationName: string,
 		targetApplicationName: string,
-	): Promise<ResponseLogin> {
+	): Promise<ResponseBody<ResponseLogin>> {
 		const internalUser = await this.internalUsersRepository.findByEmail(dto.email);
 		if (!internalUser) {
 			throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
@@ -114,7 +116,7 @@ export class InternalUsersLoginService {
 
 		const access_token = this.jwtService.sign(payload, { expiresIn });
 
-		return new ResponseLogin(access_token);
+		return InternalUserMapper.toLoginResponse(access_token);
 	}
 
 	private async assertHasApplicationAccess(

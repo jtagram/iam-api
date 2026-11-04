@@ -1,11 +1,11 @@
 import { ResponseBody } from '../../src/common/dto/response-body.dto';
 
-/** Error body produced by Nest's exception layer / the global filter. */
+/** Failure envelope produced by the global exception filters. */
 export interface ErrorBody {
-	statusCode: number;
-	error?: string;
-	/** `string[]` for ValidationPipe failures, `string` otherwise. */
-	message: string | string[];
+	ok: false;
+	/** Plain string; ValidationPipe messages are joined with ', '. */
+	msg: string;
+	data: null;
 }
 
 /**
@@ -18,5 +18,5 @@ export function bodyOf<T>(res: { body: unknown }): T {
 
 /** Typed `data` of the `ResponseBody<T>` envelope. */
 export function dataOf<T>(res: { body: unknown }): T {
-	return bodyOf<ResponseBody<T>>(res).data;
+	return bodyOf<ResponseBody<T>>(res).data as T;
 }

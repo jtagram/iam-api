@@ -108,6 +108,21 @@ describe('RolesRepository (in-memory db)', () => {
 		});
 	});
 
+	describe('findAllOrderedByCreatedAtDesc', () => {
+		it('returns every role, the most recently created first', async () => {
+			const first = await repository.createRole(buildRole(2, 'B'));
+			const second = await repository.createRole(buildRole(1, 'A'));
+
+			const roles = await repository.findAllOrderedByCreatedAtDesc();
+
+			expect(roles.map((role) => role.id)).toEqual([second.id, first.id]);
+		});
+
+		it('returns an empty list when there are no roles', async () => {
+			await expect(repository.findAllOrderedByCreatedAtDesc()).resolves.toEqual([]);
+		});
+	});
+
 	describe('findByIds', () => {
 		it('returns only the roles with the given ids', async () => {
 			const a = await repository.createRole(buildRole(1, 'A'));

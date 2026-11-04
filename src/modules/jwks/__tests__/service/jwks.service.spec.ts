@@ -47,14 +47,22 @@ describe('JwksService', () => {
 	});
 
 	describe('getJwks', () => {
+		it('wraps the key set in the success envelope', () => {
+			const response = new JwksService(configWith(keys.publicKey)).getJwks();
+
+			expect(response.ok).toBe(true);
+			expect(response.msg).toBe('JWKS retrieved successfully');
+			expect(Object.keys(response.data!)).toEqual(['keys']);
+		});
+
 		it('returns a key set with exactly one key', () => {
 			const jwks = new JwksService(configWith(keys.publicKey)).getJwks();
 
-			expect(jwks.keys).toHaveLength(1);
+			expect(jwks.data!.keys).toHaveLength(1);
 		});
 
 		it('describes the key as an RS256 signature key with the current kid', () => {
-			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().keys;
+			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().data!.keys;
 
 			expect(key).toMatchObject({
 				kty: 'RSA',
@@ -69,14 +77,14 @@ describe('JwksService', () => {
 				format: 'jwk',
 			});
 
-			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().keys;
+			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().data!.keys;
 
 			expect(key.n).toBe(expected.n);
 			expect(key.e).toBe(expected.e);
 		});
 
 		it('never exposes private key members', () => {
-			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().keys;
+			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().data!.keys;
 
 			for (const member of ['d', 'p', 'q', 'dp', 'dq', 'qi']) {
 				expect(key).not.toHaveProperty(member);
@@ -87,9 +95,9 @@ describe('JwksService', () => {
 			const service = new JwksService(configWith(keys.publicKey));
 
 			const first = service.getJwks();
-			first.keys[0].kid = 'tampered';
+			first.data!.keys[0].kid = 'tampered';
 
-			expect(service.getJwks().keys[0].kid).toBe(JWT_KEY_ID);
+			expect(service.getJwks().data!.keys[0].kid).toBe(JWT_KEY_ID);
 		});
 
 		it('publishes a key that verifies tokens signed with the matching private key', () => {
@@ -97,7 +105,7 @@ describe('JwksService', () => {
 				privateKey: keys.privateKey,
 				signOptions: { algorithm: 'RS256', keyid: JWT_KEY_ID },
 			}).sign({ sub: 1 });
-			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().keys;
+			const [key] = new JwksService(configWith(keys.publicKey)).getJwks().data!.keys;
 			const publishedPem = createPublicKey({
 				key: key as never,
 				format: 'jwk',

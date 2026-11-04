@@ -21,14 +21,11 @@ describe('UnknownExceptionFilter', () => {
 		filter = new UnknownExceptionFilter(logger as unknown as Logger);
 	});
 
-	it('answers 500 with the generic message for an Error', () => {
+	it('answers 500 with the generic failure envelope for an Error', () => {
 		filter.catch(new Error('secret internal detail'), host);
 
 		expect(status).toHaveBeenCalledWith(500);
-		expect(json).toHaveBeenCalledWith({
-			statusCode: 500,
-			message: GENERIC_ERROR_MESSAGE,
-		});
+		expect(json).toHaveBeenCalledWith({ ok: false, msg: GENERIC_ERROR_MESSAGE, data: null });
 	});
 
 	it('does not leak the original error message to the client', () => {
@@ -76,9 +73,6 @@ describe('UnknownExceptionFilter', () => {
 		expect(logger.error.mock.calls[0][0]).toMatchObject({
 			errorType: 'object',
 		});
-		expect(json).toHaveBeenCalledWith({
-			statusCode: 500,
-			message: GENERIC_ERROR_MESSAGE,
-		});
+		expect(json).toHaveBeenCalledWith({ ok: false, msg: GENERIC_ERROR_MESSAGE, data: null });
 	});
 });

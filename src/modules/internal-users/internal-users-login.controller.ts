@@ -4,6 +4,7 @@ import {
 	OriginApplication,
 	TargetApplication,
 } from '../../common/decorators/application-name.decorator';
+import { ResponseBody } from '../../common/dto/response-body.dto';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 import { Public } from '../../common/guards/public.decorator';
 import { InternalUsersLoginService } from './internal-users-login.service';
@@ -23,7 +24,7 @@ export class InternalUsersLoginController {
 		@Body() dto: LoginInternalUserDto,
 		@OriginApplication() originApplicationName: string,
 		@TargetApplication() targetApplicationName: string,
-	): Promise<ResponseLogin> {
+	): Promise<ResponseBody<ResponseLogin>> {
 		return this.internalUsersLoginService.login(dto, originApplicationName, targetApplicationName);
 	}
 }

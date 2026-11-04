@@ -18,7 +18,10 @@ import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
 import { ConnectionResponse } from '../../common/dto/connection-response.dto';
 import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
+import { ResponseBody } from '../../common/dto/response-body.dto';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
+import { InternalUserApplicationAssignmentResponse } from './dto/internal-user-application-assignment-response.dto';
+import { InternalUserRoleAssignmentResponse } from './dto/internal-user-role-assignment-response.dto';
 import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
 import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
 import { FindInternalUsersByRoleDto } from './dto/find-internal-users-by-role.dto';
@@ -46,7 +49,7 @@ export class InternalUsersService {
 		private readonly internalUserConnectionsRepository: InternalUserConnectionsRepository,
 	) {}
 
-	async create(dto: CreateInternalUserDto): Promise<InternalUserCreatedResponse> {
+	async create(dto: CreateInternalUserDto): Promise<ResponseBody<InternalUserCreatedResponse>> {
 		const existing = await this.internalUsersRepository.findByEmail(dto.email);
 		if (existing) {
 			throw new ConflictException('Email already in use');
@@ -57,17 +60,17 @@ export class InternalUsersService {
 		const createdInternalUser =
 			await this.internalUsersRepository.createInternalUser(internalUserEntity);
 
-		return InternalUserMapper.toCreatedResponse(createdInternalUser);
+		return InternalUserMapper.toCreateResponse(createdInternalUser);
 	}
 
-	async findAll(): Promise<InternalUserCreatedResponse[]> {
+	async findAll(): Promise<ResponseBody<InternalUserCreatedResponse[]>> {
 		const internalUsers = await this.internalUsersRepository.findAll();
-		return internalUsers.map((internalUser) => InternalUserMapper.toResponse(internalUser));
+		return InternalUserMapper.toFindAllResponse(internalUsers);
 	}
 
 	async findByApplicationAndRoles(
 		dto: FindInternalUsersByRoleDto,
-	): Promise<InternalUserCreatedResponse[]> {
+	): Promise<ResponseBody<InternalUserCreatedResponse[]>> {
 		const application = await this.applicationsRepository.findByName(dto.applicationName);
 		if (!application) {
 			throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
@@ -87,10 +90,12 @@ export class InternalUsersService {
 		);
 		const internalUsers = await this.internalUsersRepository.findByIds(internalUserIds);
 
-		return internalUsers.map((internalUser) => InternalUserMapper.toResponse(internalUser));
+		return InternalUserMapper.toFindByApplicationAndRolesResponse(internalUsers);
 	}
 
-	async findAssignedApplications(userId: number): Promise<InternalUserApplicationRolesResponse[]> {
+	async findAssignedApplications(
+		userId: number,
+	): Promise<ResponseBody<InternalUserApplicationRolesResponse[]>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
@@ -115,7 +120,7 @@ export class InternalUsersService {
 		];
 		const applications = await this.applicationsRepository.findByIds(applicationIds);
 
-		return applications.map((application) => ({
+		const assignedApplications = applications.map((application) => ({
 			applicationId: application.id,
 			applicationName: application.name,
 			applicationDescription: application.description,
@@ -127,12 +132,14 @@ export class InternalUsersService {
 					description: role.description,
 				})),
 		}));
+
+		return InternalUserMapper.toFindAssignedApplicationsResponse(assignedApplications);
 	}
 
 	async assignApplication(
 		userId: number,
 		dto: AssignApplicationDto,
-	): Promise<InternalUserAppEntity> {
+	): Promise<ResponseBody<InternalUserApplicationAssignmentResponse>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
@@ -155,10 +162,14 @@ export class InternalUsersService {
 		const entity = new InternalUserAppEntity();
 		entity.internalUserId = userId;
 		entity.applicationId = dto.applicationId;
-		return this.internalUserAppsRepository.createAssignment(entity);
+		const created = await this.internalUserAppsRepository.createAssignment(entity);
+		return InternalUserMapper.toAssignApplicationResponse(created);
 	}
 
-	async assignRole(userId: number, dto: AssignRoleDto): Promise<InternalUserRoleEntity> {
+	async assignRole(
+		userId: number,
+		dto: AssignRoleDto,
+	): Promise<ResponseBody<InternalUserRoleAssignmentResponse>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
@@ -181,10 +192,11 @@ export class InternalUsersService {
 		entity.internalUserId = userId;
 		entity.roleId = dto.roleId;
 		entity.applicationId = role.applicationId;
-		return this.internalUserRolesRepository.createAssignment(entity);
+		const created = await this.internalUserRolesRepository.createAssignment(entity);
+		return InternalUserMapper.toAssignRoleResponse(created);
 	}
 
-	async findConnections(userId: number): Promise<ConnectionResponse[]> {
+	async findConnections(userId: number): Promise<ResponseBody<ConnectionResponse[]>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
@@ -192,10 +204,14 @@ export class InternalUsersService {
 
 		const connections =
 			await this.internalUserConnectionsRepository.findAllByInternalUserId(userId);
-		return this.toConnectionResponses(connections);
+		const connectionResponses = await this.toConnectionResponses(connections);
+		return InternalUserMapper.toFindConnectionsResponse(connectionResponses);
 	}
 
-	async createConnection(userId: number, dto: CreateConnectionDto): Promise<ConnectionResponse> {
+	async createConnection(
+		userId: number,
+		dto: CreateConnectionDto,
+	): Promise<ResponseBody<ConnectionResponse>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
@@ -240,7 +256,7 @@ export class InternalUsersService {
 		const created = await this.internalUserConnectionsRepository.createConnection(entity);
 
 		const [response] = await this.toConnectionResponses([created]);
-		return response;
+		return InternalUserMapper.toCreateConnectionResponse(response);
 	}
 
 	private async toConnectionResponses(

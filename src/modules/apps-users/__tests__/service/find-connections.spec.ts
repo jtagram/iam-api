@@ -59,6 +59,7 @@ describe('AppUsersService.findConnections', () => {
 		]);
 
 		await expect(service.findConnections(1)).resolves.toEqual({
+			ok: true,
 			msg: 'Connections retrieved successfully',
 			data: [
 				{
@@ -107,6 +108,7 @@ describe('AppUsersService.findConnections', () => {
 		applications.findByIds.mockResolvedValue([]);
 
 		await expect(service.findConnections(1)).resolves.toEqual({
+			ok: true,
 			msg: 'Connections retrieved successfully',
 			data: [],
 		});
@@ -126,7 +128,7 @@ describe('AppUsersService.findConnections', () => {
 
 		const result = await service.findConnections(1);
 
-		expect(result.data[0].destinationApplicationName).toBeUndefined();
+		expect(result.data?.[0].destinationApplicationName).toBeUndefined();
 	});
 
 	it('propagates a repository failure', async () => {

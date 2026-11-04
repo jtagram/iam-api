@@ -13,26 +13,22 @@ export class ApplicationsService {
 
 	async create(dto: CreateApplicationDto): Promise<ResponseBody<ApplicationResponse>> {
 		const existingApplication = await this.applicationsRepository.findByName(dto.name);
+
 		if (existingApplication) {
 			throw new ConflictException(APPLICATION_NAME_ALREADY_EXISTS_MESSAGE);
 		}
 
 		const applicationEntity = ApplicationMapper.toEntity(dto);
+
 		const createdApplication =
 			await this.applicationsRepository.createApplication(applicationEntity);
 
-		return ResponseBody.builder<ApplicationResponse>()
-			.withMsg('Application created successfully')
-			.withData(ApplicationMapper.toResponse(createdApplication))
-			.build();
+		return ApplicationMapper.toCreateResponse(createdApplication);
 	}
 
 	async findAll(): Promise<ResponseBody<ApplicationResponse[]>> {
 		const applications = await this.applicationsRepository.findAll();
 
-		return ResponseBody.builder<ApplicationResponse[]>()
-			.withMsg('Applications retrieved successfully')
-			.withData(applications.map((application) => ApplicationMapper.toResponse(application)))
-			.build();
+		return ApplicationMapper.toFindAllResponse(applications);
 	}
 }

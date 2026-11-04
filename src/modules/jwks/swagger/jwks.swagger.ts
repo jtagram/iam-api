@@ -1,5 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
+import { ApiOkResponseBody } from '../../../common/swagger/api-response-body.decorator';
 import { JwksResponse } from '../dto/jwks-response.dto';
 
 export const ApiGetJwks = () =>
@@ -9,8 +10,9 @@ export const ApiGetJwks = () =>
 			description:
 				'Public endpoint (no authentication). Returns the public key other services use to verify the tokens issued by this API.',
 		}),
-		ApiOkResponse({
+		ApiOkResponseBody({
 			description: 'JSON Web Key Set.',
 			type: JwksResponse,
+			msg: 'JWKS retrieved successfully',
 		}),
 	);

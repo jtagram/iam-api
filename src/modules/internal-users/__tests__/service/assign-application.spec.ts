@@ -89,9 +89,13 @@ describe('InternalUsersService.assignApplication', () => {
 
 	it('returns the created assignment', async () => {
 		await expect(service.assignApplication(1, dto)).resolves.toEqual({
-			id: 70,
-			internalUserId: 1,
-			applicationId: 5,
+			ok: true,
+			msg: 'Application assigned to internal user successfully',
+			data: {
+				id: 70,
+				internalUserId: 1,
+				applicationId: 5,
+			},
 		});
 	});
 

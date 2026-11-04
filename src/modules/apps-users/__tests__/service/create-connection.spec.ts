@@ -130,6 +130,7 @@ describe('AppUsersService.createConnection', () => {
 
 	it('returns the created connection with the application names', async () => {
 		await expect(service.createConnection(1, dto)).resolves.toEqual({
+			ok: true,
 			msg: 'Connection created successfully',
 			data: {
 				id: 90,

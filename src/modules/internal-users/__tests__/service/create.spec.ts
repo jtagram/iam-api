@@ -78,10 +78,14 @@ describe('InternalUsersService.create', () => {
 		const result = await service.create(dto);
 
 		expect(result).toEqual({
-			id: 4,
-			name: 'Ada',
-			lastname: 'Lovelace',
-			email: 'ada@example.com',
+			ok: true,
+			msg: 'Internal user created successfully',
+			data: {
+				id: 4,
+				name: 'Ada',
+				lastname: 'Lovelace',
+				email: 'ada@example.com',
+			},
 		});
 	});
 

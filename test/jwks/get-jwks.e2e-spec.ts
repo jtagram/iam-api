@@ -10,7 +10,7 @@ import {
 } from '../helpers/test-auth';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import { seedIamAdmin } from '../helpers/seed';
-import { bodyOf } from '../helpers/response-types';
+import { dataOf } from '../helpers/response-types';
 import { JwksResponse } from '../../src/modules/jwks/dto/jwks-response.dto';
 
 describe('GET /.well-known/jwks.json (e2e)', () => {
@@ -47,16 +47,20 @@ describe('GET /.well-known/jwks.json (e2e)', () => {
 		const response = await send().expect(200);
 
 		expect(response.body).toEqual({
-			keys: [
-				{
-					kty: 'RSA',
-					n: expect.any(String),
-					e: 'AQAB',
-					use: 'sig',
-					alg: 'RS256',
-					kid: 'iam-api-rsa-1',
-				},
-			],
+			ok: true,
+			msg: 'JWKS retrieved successfully',
+			data: {
+				keys: [
+					{
+						kty: 'RSA',
+						n: expect.any(String),
+						e: 'AQAB',
+						use: 'sig',
+						alg: 'RS256',
+						kid: 'iam-api-rsa-1',
+					},
+				],
+			},
 		});
 	});
 
@@ -64,14 +68,14 @@ describe('GET /.well-known/jwks.json (e2e)', () => {
 		const response = await send().expect(200);
 
 		const expected = createPublicKey(TEST_PUBLIC_KEY).export({ format: 'jwk' });
-		expect(bodyOf<JwksResponse>(response).keys[0].n).toBe(expected.n);
-		expect(bodyOf<JwksResponse>(response).keys[0].e).toBe(expected.e);
+		expect(dataOf<JwksResponse>(response).keys[0].n).toBe(expected.n);
+		expect(dataOf<JwksResponse>(response).keys[0].e).toBe(expected.e);
 	});
 
 	it('never publishes private key material', async () => {
 		const response = await send().expect(200);
 
-		const jwk = bodyOf<JwksResponse>(response).keys[0];
+		const jwk = dataOf<JwksResponse>(response).keys[0];
 		for (const privateMember of ['d', 'p', 'q', 'dp', 'dq', 'qi']) {
 			expect(jwk).not.toHaveProperty(privateMember);
 		}

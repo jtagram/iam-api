@@ -10,6 +10,7 @@ import {
 	ApiCreatedResponseBody,
 	ApiOkResponseBody,
 } from '../../../common/swagger/api-response-body.decorator';
+import { ApplicationRolesResponse } from '../dto/application-roles-response.dto';
 import { RoleResponse } from '../dto/role-response.dto';
 
 export const ApiCreateRole = () =>
@@ -35,6 +36,22 @@ export const ApiCreateRole = () =>
 		ApiConflictResponse({
 			description:
 				'`A role with this name already exists for this application`: the `name` is already used in that application.',
+		}),
+	);
+
+export const ApiFindRolesGroupedByApplication = () =>
+	applyDecorators(
+		ApiOperation({
+			summary: 'List every application with its roles',
+			description:
+				'Returns every application, most recently created first, each with all its roles, most recently created first (`roles` is empty for an application without roles). Requires the `ADMIN` role in the iam application.',
+		}),
+		ApiProtected(),
+		ApiOkResponseBody({
+			description: 'Roles grouped by application retrieved.',
+			type: ApplicationRolesResponse,
+			isArray: true,
+			msg: 'Roles grouped by application retrieved successfully',
 		}),
 	);
 

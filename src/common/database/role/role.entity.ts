@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
 @Entity({ name: 'apps_roles' })
 @Unique(['applicationId', 'name'])
@@ -14,6 +14,9 @@ export class RoleEntity {
 
 	@Column({ length: 200 })
 	description!: string;
+
+	@CreateDateColumn({ name: 'created_at' })
+	createdAt!: Date;
 
 	static builder(): RoleEntityBuilder {
 		return new RoleEntityBuilder();

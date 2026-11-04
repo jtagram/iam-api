@@ -39,17 +39,25 @@ describe('InternalUsersService.findAll', () => {
 
 		const result = await service.findAll();
 
-		expect(result).toEqual([
-			{ id: 1, name: 'Ada', lastname: 'L', email: 'a@example.com' },
-			{ id: 2, name: 'Bob', lastname: 'M', email: 'b@example.com' },
-		]);
+		expect(result).toEqual({
+			ok: true,
+			msg: 'Internal users retrieved successfully',
+			data: [
+				{ id: 1, name: 'Ada', lastname: 'L', email: 'a@example.com' },
+				{ id: 2, name: 'Bob', lastname: 'M', email: 'b@example.com' },
+			],
+		});
 		expect(JSON.stringify(result)).not.toContain('HASH');
 	});
 
 	it('returns an empty list when there are no users', async () => {
 		repository.findAll.mockResolvedValue([]);
 
-		await expect(service.findAll()).resolves.toEqual([]);
+		await expect(service.findAll()).resolves.toEqual({
+			ok: true,
+			msg: 'Internal users retrieved successfully',
+			data: [],
+		});
 	});
 
 	it('propagates a repository failure', async () => {

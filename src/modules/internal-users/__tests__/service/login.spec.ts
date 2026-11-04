@@ -198,11 +198,13 @@ describe('InternalUsersLoginService.login', () => {
 	});
 
 	describe('token', () => {
-		it('returns a ResponseLogin carrying the access token', async () => {
+		it('returns the success envelope carrying a ResponseLogin with the access token', async () => {
 			const response = await service.login(dto, ORIGIN, TARGET);
 
-			expect(response).toBeInstanceOf(ResponseLogin);
-			expect(response.access_token.split('.')).toHaveLength(3);
+			expect(response.ok).toBe(true);
+			expect(response.msg).toBe('Login successful');
+			expect(response.data).toBeInstanceOf(ResponseLogin);
+			expect(response.data!.access_token.split('.')).toHaveLength(3);
 		});
 
 		it('loads the roles by the ids found for the target application', async () => {
@@ -212,7 +214,8 @@ describe('InternalUsersLoginService.login', () => {
 		});
 
 		it('signs the token with RS256 and the current key id', async () => {
-			const { access_token } = await service.login(dto, ORIGIN, TARGET);
+			const response = await service.login(dto, ORIGIN, TARGET);
+			const access_token = response.data!.access_token;
 
 			const header = JSON.parse(
 				Buffer.from(access_token.split('.')[0], 'base64url').toString(),
@@ -221,13 +224,15 @@ describe('InternalUsersLoginService.login', () => {
 		});
 
 		it('can be verified with the matching public key', async () => {
-			const { access_token } = await service.login(dto, ORIGIN, TARGET);
+			const response = await service.login(dto, ORIGIN, TARGET);
+			const access_token = response.data!.access_token;
 
 			expect(() => decode(access_token)).not.toThrow();
 		});
 
 		it('puts the user id as subject and its identifier in the claims', async () => {
-			const { access_token } = await service.login(dto, ORIGIN, TARGET);
+			const response = await service.login(dto, ORIGIN, TARGET);
+			const access_token = response.data!.access_token;
 
 			expect(decode(access_token)).toMatchObject({
 				sub: 1,
@@ -236,13 +241,15 @@ describe('InternalUsersLoginService.login', () => {
 		});
 
 		it('records the origin application that requested the token', async () => {
-			const { access_token } = await service.login(dto, ORIGIN, TARGET);
+			const response = await service.login(dto, ORIGIN, TARGET);
+			const access_token = response.data!.access_token;
 
 			expect(decode(access_token).origin).toBe(ORIGIN);
 		});
 
 		it('puts the target application and the user roles in the apps claim', async () => {
-			const { access_token } = await service.login(dto, ORIGIN, TARGET);
+			const response = await service.login(dto, ORIGIN, TARGET);
+			const access_token = response.data!.access_token;
 
 			expect(decode(access_token).apps).toEqual({
 				application: {
@@ -260,7 +267,8 @@ describe('InternalUsersLoginService.login', () => {
 		it('expires after JWT_EXPIRES_IN', async () => {
 			config.get.mockReturnValue('2h');
 
-			const { access_token } = await service.login(dto, ORIGIN, TARGET);
+			const response = await service.login(dto, ORIGIN, TARGET);
+			const access_token = response.data!.access_token;
 
 			const claims = decode(access_token);
 			expect(claims.exp - claims.iat).toBe(7200);
@@ -268,7 +276,8 @@ describe('InternalUsersLoginService.login', () => {
 		});
 
 		it('never puts the stored password hash nor the plaintext in the token', async () => {
-			const { access_token } = await service.login(dto, ORIGIN, TARGET);
+			const response = await service.login(dto, ORIGIN, TARGET);
+			const access_token = response.data!.access_token;
 
 			const payload = Buffer.from(access_token.split('.')[1], 'base64url').toString();
 			expect(payload).not.toContain(secretHash);
@@ -276,7 +285,9 @@ describe('InternalUsersLoginService.login', () => {
 		});
 
 		it('allows the same application as origin and target when a connection exists', async () => {
-			await expect(service.login(dto, TARGET, TARGET)).resolves.toBeInstanceOf(ResponseLogin);
+			const response = await service.login(dto, TARGET, TARGET);
+
+			expect(response.data).toBeInstanceOf(ResponseLogin);
 		});
 	});
 });

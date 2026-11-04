@@ -1,6 +1,7 @@
 import { createPublicKey, JsonWebKey } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { TokenPayload } from './jwt-types';
+import { dataOf } from './response-types';
 import { AppTestApp } from './app-test-app';
 
 export interface Jwks {
@@ -15,7 +16,7 @@ export interface DecodedToken {
 /** Reads the public key set the way a downstream service does. */
 export async function fetchJwks(testApp: AppTestApp): Promise<Jwks> {
 	const response = await testApp.http().get('/.well-known/jwks.json').expect(200);
-	return response.body as Jwks;
+	return dataOf<Jwks>(response);
 }
 
 /**

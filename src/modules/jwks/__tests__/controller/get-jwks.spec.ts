@@ -15,7 +15,7 @@ describe('JwksController.getJwks', () => {
 	});
 
 	it('delegates to JwksService.getJwks and returns its result', () => {
-		const jwks = { keys: [{ kty: 'RSA' }] };
+		const jwks = { ok: true, msg: 'JWKS retrieved successfully', data: { keys: [{ kty: 'RSA' }] } };
 		service.getJwks.mockReturnValue(jwks);
 
 		expect(controller.getJwks()).toBe(jwks);

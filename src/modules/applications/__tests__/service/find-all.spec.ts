@@ -19,6 +19,7 @@ describe('ApplicationsService.findAll', () => {
 		]);
 
 		await expect(service.findAll()).resolves.toEqual({
+			ok: true,
 			msg: 'Applications retrieved successfully',
 			data: [
 				{ id: 1, name: 'iam', description: 'Identity' },
@@ -31,6 +32,7 @@ describe('ApplicationsService.findAll', () => {
 		repository.findAll.mockResolvedValue([]);
 
 		await expect(service.findAll()).resolves.toEqual({
+			ok: true,
 			msg: 'Applications retrieved successfully',
 			data: [],
 		});

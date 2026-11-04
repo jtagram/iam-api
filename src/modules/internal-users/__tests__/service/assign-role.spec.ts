@@ -88,10 +88,14 @@ describe('InternalUsersService.assignRole', () => {
 
 	it('returns the created assignment', async () => {
 		await expect(service.assignRole(1, dto)).resolves.toEqual({
-			id: 80,
-			internalUserId: 1,
-			roleId: 9,
-			applicationId: 5,
+			ok: true,
+			msg: 'Role assigned to internal user successfully',
+			data: {
+				id: 80,
+				internalUserId: 1,
+				roleId: 9,
+				applicationId: 5,
+			},
 		});
 	});
 

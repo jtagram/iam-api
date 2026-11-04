@@ -3,11 +3,11 @@ import {
 	ApiBadRequestResponse,
 	ApiForbiddenResponse,
 	ApiNotFoundResponse,
-	ApiOkResponse,
 	ApiOperation,
 	ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ApiApplicationHeaders } from '../../../common/swagger/api-application-headers.decorator';
+import { ApiOkResponseBody } from '../../../common/swagger/api-response-body.decorator';
 import { ResponseLogin } from '../../../common/dto/response-login.dto';
 
 export const ApiInternalUserLogin = () =>
@@ -18,9 +18,10 @@ export const ApiInternalUserLogin = () =>
 				'Validates the credentials and returns an access token scoped to the target application.',
 		}),
 		ApiApplicationHeaders(),
-		ApiOkResponse({
+		ApiOkResponseBody({
 			description: 'Access token issued.',
 			type: ResponseLogin,
+			msg: 'Login successful',
 		}),
 		ApiBadRequestResponse({
 			description: [

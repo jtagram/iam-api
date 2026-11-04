@@ -23,6 +23,10 @@ export class ApplicationsRepository {
 		return this.repository.find();
 	}
 
+	findAllOrderedByCreatedAtDesc(): Promise<ApplicationEntity[]> {
+		return this.repository.find({ order: { createdAt: 'DESC' } });
+	}
+
 	findByName(name: string): Promise<ApplicationEntity | null> {
 		return this.repository.findOne({ where: { name } });
 	}

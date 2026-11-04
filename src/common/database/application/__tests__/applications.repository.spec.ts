@@ -106,6 +106,21 @@ describe('ApplicationsRepository (in-memory db)', () => {
 		});
 	});
 
+	describe('findAllOrderedByCreatedAtDesc', () => {
+		it('returns every application, the most recently created first', async () => {
+			const first = await repository.createApplication(buildApplication('a'));
+			const second = await repository.createApplication(buildApplication('b'));
+
+			const all = await repository.findAllOrderedByCreatedAtDesc();
+
+			expect(all.map((application) => application.id)).toEqual([second.id, first.id]);
+		});
+
+		it('returns an empty list when there are no applications', async () => {
+			await expect(repository.findAllOrderedByCreatedAtDesc()).resolves.toEqual([]);
+		});
+	});
+
 	describe('findByName', () => {
 		it('returns the application with that name', async () => {
 			await repository.createApplication(buildApplication('iam'));

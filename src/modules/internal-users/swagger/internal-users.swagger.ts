@@ -2,14 +2,16 @@ import { applyDecorators } from '@nestjs/common';
 import {
 	ApiBadRequestResponse,
 	ApiConflictResponse,
-	ApiCreatedResponse,
 	ApiNotFoundResponse,
-	ApiOkResponse,
 	ApiOperation,
 	ApiParam,
 } from '@nestjs/swagger';
 import { ConnectionResponse } from '../../../common/dto/connection-response.dto';
 import { ApiProtected } from '../../../common/swagger/api-protected.decorator';
+import {
+	ApiCreatedResponseBody,
+	ApiOkResponseBody,
+} from '../../../common/swagger/api-response-body.decorator';
 import { InternalUserApplicationAssignmentResponse } from '../dto/internal-user-application-assignment-response.dto';
 import { InternalUserApplicationRolesResponse } from '../dto/internal-user-application-roles-response.dto';
 import { InternalUserCreatedResponse } from '../dto/internal-user-created-response.dto';
@@ -34,9 +36,10 @@ export const ApiCreateInternalUser = () =>
 				'Registers a new internal user with a hashed password. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiProtected(),
-		ApiCreatedResponse({
+		ApiCreatedResponseBody({
 			description: 'Internal user created.',
 			type: InternalUserCreatedResponse,
+			msg: 'Internal user created successfully',
 		}),
 		ApiBadRequestResponse({
 			description:
@@ -54,10 +57,11 @@ export const ApiFindAllInternalUsers = () =>
 			description: 'Returns every internal user. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiProtected(),
-		ApiOkResponse({
+		ApiOkResponseBody({
 			description: 'Internal users retrieved.',
 			type: InternalUserCreatedResponse,
 			isArray: true,
+			msg: 'Internal users retrieved successfully',
 		}),
 	);
 
@@ -69,10 +73,11 @@ export const ApiFindInternalUsersByRole = () =>
 				'Returns the internal users that hold at least one of the given roles in the given application. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiProtected(),
-		ApiOkResponse({
+		ApiOkResponseBody({
 			description: 'Matching internal users (empty list if none match).',
 			type: InternalUserCreatedResponse,
 			isArray: true,
+			msg: 'Internal users retrieved successfully',
 		}),
 		ApiBadRequestResponse({
 			description:
@@ -92,10 +97,11 @@ export const ApiFindInternalUserApplications = () =>
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
-		ApiOkResponse({
+		ApiOkResponseBody({
 			description: 'Assigned applications with their roles.',
 			type: InternalUserApplicationRolesResponse,
 			isArray: true,
+			msg: 'Assigned applications retrieved successfully',
 		}),
 		ApiBadRequestResponse({
 			description: ['Invalid request:', INVALID_ID_CASE].join('\n'),
@@ -114,9 +120,10 @@ export const ApiAssignInternalUserApplication = () =>
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
-		ApiCreatedResponse({
+		ApiCreatedResponseBody({
 			description: 'Application assigned.',
 			type: InternalUserApplicationAssignmentResponse,
+			msg: 'Application assigned to internal user successfully',
 		}),
 		ApiBadRequestResponse({
 			description: [
@@ -144,9 +151,10 @@ export const ApiAssignInternalUserRole = () =>
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
-		ApiCreatedResponse({
+		ApiCreatedResponseBody({
 			description: 'Role assigned.',
 			type: InternalUserRoleAssignmentResponse,
+			msg: 'Role assigned to internal user successfully',
 		}),
 		ApiBadRequestResponse({
 			description: [
@@ -172,10 +180,11 @@ export const ApiFindInternalUserConnections = () =>
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
-		ApiOkResponse({
+		ApiOkResponseBody({
 			description: 'Connections of the user.',
 			type: ConnectionResponse,
 			isArray: true,
+			msg: 'Connections retrieved successfully',
 		}),
 		ApiBadRequestResponse({
 			description: ['Invalid request:', INVALID_ID_CASE].join('\n'),
@@ -194,9 +203,10 @@ export const ApiCreateInternalUserConnection = () =>
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
-		ApiCreatedResponse({
+		ApiCreatedResponseBody({
 			description: 'Connection created.',
 			type: ConnectionResponse,
+			msg: 'Connection created successfully',
 		}),
 		ApiBadRequestResponse({
 			description: [

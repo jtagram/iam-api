@@ -89,6 +89,7 @@ describe('AppUsersService.assignApplication', () => {
 
 	it('returns the created assignment', async () => {
 		await expect(service.assignApplication(1, dto)).resolves.toEqual({
+			ok: true,
 			msg: 'Application assigned to user successfully',
 			data: { id: 70, appUserId: 1, applicationId: 5 },
 		});

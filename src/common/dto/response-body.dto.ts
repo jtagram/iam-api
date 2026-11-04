@@ -1,39 +1,20 @@
-/** Generic envelope wrapping every non-error API response. */
+/**
+ * Single envelope wrapping every API response, success or error.
+ * Build it only through `ResponseBody.success` / `ResponseBody.failure`
+ * so `ok` and `data` can never be inconsistent.
+ */
 export class ResponseBody<T> {
-	msg!: string;
-	data!: T;
+	private constructor(
+		readonly ok: boolean,
+		readonly msg: string,
+		readonly data: T | null,
+	) {}
 
-	static builder<T>(): ResponseBodyBuilder<T> {
-		return new ResponseBodyBuilder<T>();
-	}
-}
-
-/** Fluent builder for `ResponseBody<T>` — stays generic, no knowledge of any particular `T`. */
-export class ResponseBodyBuilder<T> {
-	private msg?: string;
-	private data?: T;
-
-	withMsg(msg: string): this {
-		this.msg = msg;
-		return this;
+	static success<T>(msg: string, data: T): ResponseBody<T> {
+		return new ResponseBody<T>(true, msg, data);
 	}
 
-	withData(data: T): this {
-		this.data = data;
-		return this;
-	}
-
-	build(): ResponseBody<T> {
-		if (this.msg === undefined) {
-			throw new Error('ResponseBody.Builder: msg is required');
-		}
-		if (this.data === undefined) {
-			throw new Error('ResponseBody.Builder: data is required');
-		}
-
-		const body = new ResponseBody<T>();
-		body.msg = this.msg;
-		body.data = this.data;
-		return body;
+	static failure(msg: string): ResponseBody<never> {
+		return new ResponseBody<never>(false, msg, null);
 	}
 }

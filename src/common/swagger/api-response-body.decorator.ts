@@ -14,8 +14,9 @@ interface ApiResponseBodyOptions {
 
 const responseBodySchema = ({ type, isArray, msg }: ApiResponseBodyOptions) => ({
 	type: 'object' as const,
-	required: ['msg', 'data'],
+	required: ['ok', 'msg', 'data'],
 	properties: {
+		ok: { type: 'boolean', example: true },
 		msg: { type: 'string', example: msg },
 		data: isArray
 			? { type: 'array', items: { $ref: getSchemaPath(type) } }

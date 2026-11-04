@@ -12,7 +12,7 @@ import {
 	authorizationSignedByAnotherKey,
 	expiredAuthorization,
 } from '../helpers/test-auth';
-import { bodyOf, ErrorBody } from '../helpers/response-types';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
 import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
 import { prototypeMethod } from '../helpers/mocks';
 
@@ -59,10 +59,14 @@ describe('POST /internal-users (e2e)', () => {
 			const response = await send().expect(201);
 
 			expect(response.body).toEqual({
-				id: expect.any(Number),
-				name: 'Jane',
-				lastname: 'Doe',
-				email: 'jane.doe@example.com',
+				ok: true,
+				msg: 'Internal user created successfully',
+				data: {
+					id: expect.any(Number),
+					name: 'Jane',
+					lastname: 'Doe',
+					email: 'jane.doe@example.com',
+				},
 			});
 		});
 
@@ -71,7 +75,7 @@ describe('POST /internal-users (e2e)', () => {
 
 			const row = await testApp.dataSource
 				.getRepository(InternalUserEntity)
-				.findOneByOrFail({ id: bodyOf<InternalUserCreatedResponse>(response).id });
+				.findOneByOrFail({ id: dataOf<InternalUserCreatedResponse>(response).id });
 			expect(row.email).toBe('jane.doe@example.com');
 			expect(row.name).toBe('Jane');
 			expect(row.lastname).toBe('Doe');
@@ -87,8 +91,8 @@ describe('POST /internal-users (e2e)', () => {
 				validBody({ id: 999, role: 'ADMIN' }),
 			).expect(201);
 
-			expect(bodyOf<InternalUserCreatedResponse>(response).id).not.toBe(999);
-			expect(response.body).not.toHaveProperty('role');
+			expect(dataOf<InternalUserCreatedResponse>(response).id).not.toBe(999);
+			expect(dataOf<object>(response)).not.toHaveProperty('role');
 		});
 
 		it('accepts boundary lengths (15/15/30 characters, password of 8 and 72 characters)', async () => {
@@ -112,14 +116,10 @@ describe('POST /internal-users (e2e)', () => {
 		it('returns 400 when the body is empty', async () => {
 			const response = await send(adminAuthorization(), {}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual(
-				expect.arrayContaining([
-					'name must be a string',
-					'lastname must be a string',
-					'email must be an email',
-					'password must be a string',
-				]),
-			);
+			expect(bodyOf<ErrorBody>(response).msg).toContain('name must be a string');
+			expect(bodyOf<ErrorBody>(response).msg).toContain('lastname must be a string');
+			expect(bodyOf<ErrorBody>(response).msg).toContain('email must be an email');
+			expect(bodyOf<ErrorBody>(response).msg).toContain('password must be a string');
 		});
 
 		it('returns 400 when the email is not valid', async () => {
@@ -128,7 +128,7 @@ describe('POST /internal-users (e2e)', () => {
 				validBody({ email: 'not-an-email' }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual(['email must be an email']);
+			expect(bodyOf<ErrorBody>(response).msg).toBe('email must be an email');
 		});
 
 		it('returns 400 when the email is longer than 30 characters', async () => {
@@ -137,9 +137,9 @@ describe('POST /internal-users (e2e)', () => {
 				validBody({ email: `${'e'.repeat(25)}@example.com` }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'email must be shorter than or equal to 30 characters',
-			]);
+			);
 		});
 
 		it('returns 400 when the password is shorter than 8 characters', async () => {
@@ -147,9 +147,9 @@ describe('POST /internal-users (e2e)', () => {
 				400,
 			);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'password must be longer than or equal to 8 characters',
-			]);
+			);
 		});
 
 		it('returns 400 when the password is longer than 72 characters (bcrypt limit)', async () => {
@@ -158,9 +158,9 @@ describe('POST /internal-users (e2e)', () => {
 				validBody({ password: 'p'.repeat(73) }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'password must be shorter than or equal to 72 characters',
-			]);
+			);
 		});
 
 		it('returns 400 when the name or lastname is longer than 15 characters', async () => {
@@ -169,11 +169,11 @@ describe('POST /internal-users (e2e)', () => {
 				validBody({ name: 'n'.repeat(16), lastname: 'l'.repeat(16) }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual(
-				expect.arrayContaining([
-					'name must be shorter than or equal to 15 characters',
-					'lastname must be shorter than or equal to 15 characters',
-				]),
+			expect(bodyOf<ErrorBody>(response).msg).toContain(
+				'name must be shorter than or equal to 15 characters',
+			);
+			expect(bodyOf<ErrorBody>(response).msg).toContain(
+				'lastname must be shorter than or equal to 15 characters',
 			);
 		});
 
@@ -190,11 +190,7 @@ describe('POST /internal-users (e2e)', () => {
 
 			const response = await send().expect(409);
 
-			expect(response.body).toEqual({
-				statusCode: 409,
-				error: 'Conflict',
-				message: 'Email already in use',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Email already in use', data: null });
 			expect(await internalUserCount()).toBe(2);
 		});
 
@@ -224,8 +220,9 @@ describe('POST /internal-users (e2e)', () => {
 				expect([first.status, second.status].sort()).toEqual([201, 500]);
 				const failed = first.status === 500 ? first : second;
 				expect(failed.body).toEqual({
-					statusCode: 500,
-					message: 'An unexpected error occurred. Please try again later.',
+					ok: false,
+					msg: 'An unexpected error occurred. Please try again later.',
+					data: null,
 				});
 				const rows = await testApp.dataSource
 					.getRepository(InternalUserEntity)
@@ -242,34 +239,34 @@ describe('POST /internal-users (e2e)', () => {
 			const response = await send(null).expect(401);
 
 			expect(response.body).toEqual({
-				statusCode: 401,
-				error: 'Unauthorized',
-				message: 'Missing or malformed bearer token',
+				ok: false,
+				msg: 'Missing or malformed bearer token',
+				data: null,
 			});
 		});
 
 		it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
 			const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Missing or malformed bearer token');
 		});
 
 		it('returns 401 when the token is not a JWT', async () => {
 			const response = await send('Bearer not-a-jwt').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is signed with a key the app does not trust', async () => {
 			const response = await send(authorizationSignedByAnotherKey()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is expired', async () => {
 			const response = await send(expiredAuthorization()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -277,7 +274,7 @@ describe('POST /internal-users (e2e)', () => {
 				403,
 			);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'This token was not issued for the iam application',
 			);
 		});
@@ -285,13 +282,13 @@ describe('POST /internal-users (e2e)', () => {
 		it('returns 403 when the token only has a role other than ADMIN', async () => {
 			const response = await send(authorizationHeaderFor({ roles: ['VIEWER'] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 403 when the token carries no roles (deny by default)', async () => {
 			const response = await send(authorizationHeaderFor({ roles: [] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {
@@ -300,8 +297,9 @@ describe('POST /internal-users (e2e)', () => {
 			).expect(500);
 
 			expect(response.body).toEqual({
-				statusCode: 500,
-				message: 'An unexpected error occurred. Please try again later.',
+				ok: false,
+				msg: 'An unexpected error occurred. Please try again later.',
+				data: null,
 			});
 		});
 	});

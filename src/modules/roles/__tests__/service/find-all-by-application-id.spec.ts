@@ -36,6 +36,7 @@ describe('RolesService.findAllByApplicationId', () => {
 		]);
 
 		await expect(service.findAllByApplicationId({ applicationId: 1 })).resolves.toEqual({
+			ok: true,
 			msg: 'Roles retrieved successfully',
 			data: [
 				{ id: 1, applicationId: 1, name: 'ADMIN', description: 'Admin' },
@@ -49,6 +50,7 @@ describe('RolesService.findAllByApplicationId', () => {
 		rolesRepository.findAllByApplicationId.mockResolvedValue([]);
 
 		await expect(service.findAllByApplicationId({ applicationId: 1 })).resolves.toEqual({
+			ok: true,
 			msg: 'Roles retrieved successfully',
 			data: [],
 		});

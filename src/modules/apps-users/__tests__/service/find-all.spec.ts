@@ -40,6 +40,7 @@ describe('AppUsersService.findAll', () => {
 		const result = await service.findAll();
 
 		expect(result).toEqual({
+			ok: true,
 			msg: 'Application users retrieved successfully',
 			data: [
 				{ id: 1, clienteId: 'a', name: 'A', description: 'da' },
@@ -53,6 +54,7 @@ describe('AppUsersService.findAll', () => {
 		repository.findAll.mockResolvedValue([]);
 
 		await expect(service.findAll()).resolves.toEqual({
+			ok: true,
 			msg: 'Application users retrieved successfully',
 			data: [],
 		});

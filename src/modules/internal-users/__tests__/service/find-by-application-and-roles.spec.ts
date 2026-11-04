@@ -109,10 +109,14 @@ describe('InternalUsersService.findByApplicationAndRoles', () => {
 		});
 
 		expect(users.findByIds).toHaveBeenCalledWith([1, 2]);
-		expect(result).toEqual([
-			{ id: 1, name: 'Ada', lastname: 'L', email: 'a@example.com' },
-			{ id: 2, name: 'Bob', lastname: 'M', email: 'b@example.com' },
-		]);
+		expect(result).toEqual({
+			ok: true,
+			msg: 'Internal users retrieved successfully',
+			data: [
+				{ id: 1, name: 'Ada', lastname: 'L', email: 'a@example.com' },
+				{ id: 2, name: 'Bob', lastname: 'M', email: 'b@example.com' },
+			],
+		});
 	});
 
 	it('returns an empty list when no role matches', async () => {
@@ -121,7 +125,7 @@ describe('InternalUsersService.findByApplicationAndRoles', () => {
 				applicationName: 'ticket-hub',
 				roles: 'GHOST',
 			}),
-		).resolves.toEqual([]);
+		).resolves.toEqual({ ok: true, msg: 'Internal users retrieved successfully', data: [] });
 	});
 
 	it('propagates a repository failure', async () => {

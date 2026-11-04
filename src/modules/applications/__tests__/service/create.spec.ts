@@ -55,6 +55,7 @@ describe('ApplicationsService.create', () => {
 
 	it('returns the created application wrapped in a ResponseBody', async () => {
 		await expect(service.create(dto)).resolves.toEqual({
+			ok: true,
 			msg: 'Application created successfully',
 			data: { id: 7, name: 'iam', description: 'Identity' },
 		});

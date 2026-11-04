@@ -1,45 +1,36 @@
 import { describe, expect, it } from '@jest/globals';
-import { ResponseBody, ResponseBodyBuilder } from '../response-body.dto';
+import { ResponseBody } from '../response-body.dto';
 
-describe('ResponseBody.builder', () => {
-	it('returns a builder', () => {
-		expect(ResponseBody.builder()).toBeInstanceOf(ResponseBodyBuilder);
-	});
-
-	it('builds a ResponseBody with msg and data', () => {
-		const body = ResponseBody.builder<{ id: number }>().withMsg('ok').withData({ id: 1 }).build();
+describe('ResponseBody.success', () => {
+	it('builds an ok envelope with msg and data', () => {
+		const body = ResponseBody.success('done', { id: 1 });
 
 		expect(body).toBeInstanceOf(ResponseBody);
-		expect(body).toEqual({ msg: 'ok', data: { id: 1 } });
+		expect(body).toEqual({ ok: true, msg: 'done', data: { id: 1 } });
 	});
 
 	it('accepts falsy data values such as an empty array', () => {
-		const body = ResponseBody.builder<number[]>().withMsg('empty').withData([]).build();
-
-		expect(body.data).toEqual([]);
+		expect(ResponseBody.success('empty', []).data).toEqual([]);
 	});
 
 	it('accepts an empty message', () => {
-		const body = ResponseBody.builder<number>().withMsg('').withData(0).build();
+		expect(ResponseBody.success('', 0)).toEqual({ ok: true, msg: '', data: 0 });
+	});
+});
 
-		expect(body).toEqual({ msg: '', data: 0 });
+describe('ResponseBody.failure', () => {
+	it('builds a not-ok envelope with null data', () => {
+		const body = ResponseBody.failure('not found');
+
+		expect(body).toBeInstanceOf(ResponseBody);
+		expect(body).toEqual({ ok: false, msg: 'not found', data: null });
 	});
 
-	it('throws when msg was not provided', () => {
-		expect(() => ResponseBody.builder<number>().withData(1).build()).toThrow(
-			'ResponseBody.Builder: msg is required',
-		);
-	});
-
-	it('throws when data was not provided', () => {
-		expect(() => ResponseBody.builder<number>().withMsg('ok').build()).toThrow(
-			'ResponseBody.Builder: data is required',
-		);
-	});
-
-	it('allows chaining in any order', () => {
-		const body = ResponseBody.builder<number>().withData(5).withMsg('later').build();
-
-		expect(body).toEqual({ msg: 'later', data: 5 });
+	it('serializes with the three envelope keys', () => {
+		expect(JSON.parse(JSON.stringify(ResponseBody.failure('boom')))).toEqual({
+			ok: false,
+			msg: 'boom',
+			data: null,
+		});
 	});
 });

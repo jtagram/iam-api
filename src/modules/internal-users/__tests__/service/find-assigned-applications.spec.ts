@@ -8,7 +8,7 @@ import { InternalUserAppsRepository } from '../../../../common/database/internal
 import { InternalUserRolesRepository } from '../../../../common/database/internal-user/internal-user-roles.repository';
 import { InternalUsersService } from '../../internal-users.service';
 
-const dataOf = (result: unknown) => result as Array<{ roles: unknown[] }>;
+const dataOf = (result: { data: unknown }) => result.data as Array<{ roles: unknown[] }>;
 
 describe('InternalUsersService.findAssignedApplications', () => {
 	let users: { findById: ReturnType<typeof mockFn> };
@@ -49,7 +49,11 @@ describe('InternalUsersService.findAssignedApplications', () => {
 	});
 
 	it('returns an empty list for a user without applications nor roles', async () => {
-		await expect(service.findAssignedApplications(1)).resolves.toEqual([]);
+		await expect(service.findAssignedApplications(1)).resolves.toEqual({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+			data: [],
+		});
 		expect(applications.findByIds).toHaveBeenCalledWith([]);
 		expect(roles.findByIds).toHaveBeenCalledWith([]);
 	});
@@ -58,14 +62,18 @@ describe('InternalUsersService.findAssignedApplications', () => {
 		userApps.findAllByInternalUserId.mockResolvedValue([{ applicationId: 10 }]);
 		applications.findByIds.mockResolvedValue([{ id: 10, name: 'iam', description: 'Identity' }]);
 
-		await expect(service.findAssignedApplications(1)).resolves.toEqual([
-			{
-				applicationId: 10,
-				applicationName: 'iam',
-				applicationDescription: 'Identity',
-				roles: [],
-			},
-		]);
+		await expect(service.findAssignedApplications(1)).resolves.toEqual({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+			data: [
+				{
+					applicationId: 10,
+					applicationName: 'iam',
+					applicationDescription: 'Identity',
+					roles: [],
+				},
+			],
+		});
 	});
 
 	it('groups each role under the application it belongs to', async () => {

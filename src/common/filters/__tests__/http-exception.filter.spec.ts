@@ -27,24 +27,29 @@ describe('HttpExceptionFilter', () => {
 		filter = new HttpExceptionFilter(logger as unknown as Logger);
 	});
 
-	it('answers with the status and body of the exception', () => {
+	it('answers with the exception status and a failure envelope', () => {
 		filter.catch(new NotFoundException('Application not found'), host);
 
 		expect(status).toHaveBeenCalledWith(404);
+		expect(json).toHaveBeenCalledWith({ ok: false, msg: 'Application not found', data: null });
+	});
+
+	it('joins the validation message array of a BadRequestException with ", "', () => {
+		filter.catch(new BadRequestException(['name must be a string', 'age must be a number']), host);
+
+		expect(status).toHaveBeenCalledWith(400);
 		expect(json).toHaveBeenCalledWith({
-			statusCode: 404,
-			message: 'Application not found',
-			error: 'Not Found',
+			ok: false,
+			msg: 'name must be a string, age must be a number',
+			data: null,
 		});
 	});
 
-	it('keeps the validation message array of a BadRequestException', () => {
-		filter.catch(new BadRequestException(['name must be a string']), host);
+	it('uses a plain string response as the message', () => {
+		filter.catch(new HttpException('teapot', 418), host);
 
-		expect(status).toHaveBeenCalledWith(400);
-		expect(json).toHaveBeenCalledWith(
-			expect.objectContaining({ message: ['name must be a string'] }),
-		);
+		expect(status).toHaveBeenCalledWith(418);
+		expect(json).toHaveBeenCalledWith({ ok: false, msg: 'teapot', data: null });
 	});
 
 	it('logs a 4xx exception as a warning', () => {
@@ -75,10 +80,12 @@ describe('HttpExceptionFilter', () => {
 		});
 	});
 
-	it('supports a custom HttpException with a plain-object response', () => {
-		filter.catch(new HttpException({ code: 'X' }, 418), host);
+	it('falls back to the exception message for an object response without message', () => {
+		const exception = new HttpException({ code: 'X' }, 418);
+
+		filter.catch(exception, host);
 
 		expect(status).toHaveBeenCalledWith(418);
-		expect(json).toHaveBeenCalledWith({ code: 'X' });
+		expect(json).toHaveBeenCalledWith({ ok: false, msg: exception.message, data: null });
 	});
 });

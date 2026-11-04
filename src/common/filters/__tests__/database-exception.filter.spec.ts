@@ -22,14 +22,11 @@ describe('DatabaseExceptionFilter', () => {
 		filter = new DatabaseExceptionFilter(logger as unknown as Logger);
 	});
 
-	it('answers 500 with the generic message', () => {
+	it('answers 500 with the generic failure envelope', () => {
 		filter.catch(new TypeORMError('connection lost'), host);
 
 		expect(status).toHaveBeenCalledWith(500);
-		expect(json).toHaveBeenCalledWith({
-			statusCode: 500,
-			message: GENERIC_ERROR_MESSAGE,
-		});
+		expect(json).toHaveBeenCalledWith({ ok: false, msg: GENERIC_ERROR_MESSAGE, data: null });
 	});
 
 	it('does not expose the database error message nor the query to the client', () => {

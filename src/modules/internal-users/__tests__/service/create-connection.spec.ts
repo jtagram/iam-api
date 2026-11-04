@@ -132,11 +132,15 @@ describe('InternalUsersService.createConnection', () => {
 
 	it('returns the created connection with the application names', async () => {
 		await expect(service.createConnection(1, dto)).resolves.toEqual({
-			id: 90,
-			originApplicationId: 10,
-			originApplicationName: 'iam',
-			destinationApplicationId: 20,
-			destinationApplicationName: 'hub',
+			ok: true,
+			msg: 'Connection created successfully',
+			data: {
+				id: 90,
+				originApplicationId: 10,
+				originApplicationName: 'iam',
+				destinationApplicationId: 20,
+				destinationApplicationName: 'hub',
+			},
 		});
 	});
 

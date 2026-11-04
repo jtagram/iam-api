@@ -17,7 +17,7 @@ import {
 	authorizationSignedByAnotherKey,
 	expiredAuthorization,
 } from '../helpers/test-auth';
-import { bodyOf, ErrorBody } from '../helpers/response-types';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
 import { ConnectionResponse } from '../../src/common/dto/connection-response.dto';
 import { prototypeMethod } from '../helpers/mocks';
 
@@ -84,11 +84,15 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 			const response = await send().expect(201);
 
 			expect(response.body).toEqual({
-				id: expect.any(Number),
-				originApplicationId: iam.iamApplication.id,
-				originApplicationName: 'iam',
-				destinationApplicationId: billingId,
-				destinationApplicationName: 'billing',
+				ok: true,
+				msg: 'Connection created successfully',
+				data: {
+					id: expect.any(Number),
+					originApplicationId: iam.iamApplication.id,
+					originApplicationName: 'iam',
+					destinationApplicationId: billingId,
+					destinationApplicationName: 'billing',
+				},
 			});
 		});
 
@@ -97,7 +101,7 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 
 			const row = await testApp.dataSource
 				.getRepository(InternalUserConnectionEntity)
-				.findOneByOrFail({ id: bodyOf<ConnectionResponse>(response).id });
+				.findOneByOrFail({ id: dataOf<ConnectionResponse>(response).id });
 			expect(row.internalUserId).toBe(userId);
 			expect(row.originApplicationId).toBe(iam.iamApplication.id);
 			expect(row.destinationApplicationId).toBe(billingId);
@@ -132,10 +136,9 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 		it('returns 400 when the body is empty', async () => {
 			const response = await send(adminAuthorization(), {}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
-				'originApplicationId must be an integer number',
-				'destinationApplicationId must be an integer number',
-			]);
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
+				'originApplicationId must be an integer number, destinationApplicationId must be an integer number',
+			);
 		});
 
 		it('returns 400 when an application id is a numeric string', async () => {
@@ -145,7 +148,7 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 		it('returns 400 when the user id is not numeric', async () => {
 			const response = await send(adminAuthorization(), validBody(), 'abc').expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'Validation failed (numeric string is expected)',
 			);
 		});
@@ -157,9 +160,9 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 			).expect(400);
 
 			expect(response.body).toEqual({
-				statusCode: 400,
-				error: 'Bad Request',
-				message: 'Origin and destination applications must be different',
+				ok: false,
+				msg: 'Origin and destination applications must be different',
+				data: null,
 			});
 			expect(await connectionCount()).toBe(0);
 		});
@@ -172,7 +175,7 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 				validBody({ originApplicationId: hub.id }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'The user does not have this application assigned',
 			);
 			expect(await connectionCount()).toBe(0);
@@ -186,7 +189,7 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 				validBody({ destinationApplicationId: hub.id }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'The user does not have this application assigned',
 			);
 			expect(await connectionCount()).toBe(0);
@@ -197,11 +200,7 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 		it('returns 404 when the user does not exist', async () => {
 			const response = await send(adminAuthorization(), validBody(), 999999).expect(404);
 
-			expect(response.body).toEqual({
-				statusCode: 404,
-				error: 'Not Found',
-				message: 'Internal user not found',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Internal user not found', data: null });
 		});
 
 		it('checks the user before the same-application rule', async () => {
@@ -218,11 +217,7 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 				validBody({ originApplicationId: 999999 }),
 			).expect(404);
 
-			expect(response.body).toEqual({
-				statusCode: 404,
-				error: 'Not Found',
-				message: 'Application not found',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Application not found', data: null });
 		});
 
 		it('returns 404 when the destination application does not exist', async () => {
@@ -239,9 +234,9 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 			const response = await send().expect(409);
 
 			expect(response.body).toEqual({
-				statusCode: 409,
-				error: 'Conflict',
-				message: 'This connection already exists for the user',
+				ok: false,
+				msg: 'This connection already exists for the user',
+				data: null,
 			});
 			expect(await connectionCount()).toBe(1);
 		});
@@ -295,34 +290,34 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 			const response = await send(null).expect(401);
 
 			expect(response.body).toEqual({
-				statusCode: 401,
-				error: 'Unauthorized',
-				message: 'Missing or malformed bearer token',
+				ok: false,
+				msg: 'Missing or malformed bearer token',
+				data: null,
 			});
 		});
 
 		it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
 			const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Missing or malformed bearer token');
 		});
 
 		it('returns 401 when the token is not a JWT', async () => {
 			const response = await send('Bearer not-a-jwt').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is signed with a key the app does not trust', async () => {
 			const response = await send(authorizationSignedByAnotherKey()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is expired', async () => {
 			const response = await send(expiredAuthorization()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -330,7 +325,7 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 				403,
 			);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'This token was not issued for the iam application',
 			);
 		});
@@ -338,13 +333,13 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 		it('returns 403 when the token only has a role other than ADMIN', async () => {
 			const response = await send(authorizationHeaderFor({ roles: ['VIEWER'] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 403 when the token carries no roles (deny by default)', async () => {
 			const response = await send(authorizationHeaderFor({ roles: [] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {
@@ -353,8 +348,9 @@ describe('POST /internal-users/:id/connections (e2e)', () => {
 			).expect(500);
 
 			expect(response.body).toEqual({
-				statusCode: 500,
-				message: 'An unexpected error occurred. Please try again later.',
+				ok: false,
+				msg: 'An unexpected error occurred. Please try again later.',
+				data: null,
 			});
 		});
 	});

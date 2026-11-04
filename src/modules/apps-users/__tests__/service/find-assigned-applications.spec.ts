@@ -50,6 +50,7 @@ describe('AppUsersService.findAssignedApplications', () => {
 
 	it('returns an empty list for a user without applications nor roles', async () => {
 		await expect(service.findAssignedApplications(1)).resolves.toEqual({
+			ok: true,
 			msg: 'Assigned applications retrieved successfully',
 			data: [],
 		});
@@ -62,6 +63,7 @@ describe('AppUsersService.findAssignedApplications', () => {
 		applications.findByIds.mockResolvedValue([{ id: 10, name: 'iam', description: 'Identity' }]);
 
 		await expect(service.findAssignedApplications(1)).resolves.toEqual({
+			ok: true,
 			msg: 'Assigned applications retrieved successfully',
 			data: [
 				{

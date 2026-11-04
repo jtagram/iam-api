@@ -26,7 +26,7 @@ describe('InternalUsersLoginController.login', () => {
 
 	it('delegates the dto, the origin and the target application to the service', async () => {
 		const dto = { a: 1 } as never;
-		const response = { access_token: 'token' };
+		const response = { ok: true, msg: 'Login successful', data: { access_token: 'token' } };
 		service.login.mockResolvedValue(response);
 
 		await expect(controller.login(dto, 'iam', 'ticket-hub')).resolves.toBe(response);

@@ -15,8 +15,9 @@ import { TEST_JWT_EXPIRES_IN_SECONDS, AppTestApp, createAppTestApp } from '../he
 import { verifyWithPublishedKey } from '../helpers/jwks';
 import { InternalUserEntity } from '../../src/common/database/internal-user/internal-user.entity';
 import { adminAuthorization } from '../helpers/test-auth';
-import { bodyOf, ErrorBody } from '../helpers/response-types';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
 import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
+import { ResponseBody } from '../../src/common/dto/response-body.dto';
 import { ResponseLogin } from '../../src/common/dto/response-login.dto';
 
 describe('POST /internal-users/login (e2e)', () => {
@@ -94,8 +95,10 @@ describe('POST /internal-users/login (e2e)', () => {
 		it('returns 200 with only an access_token', async () => {
 			const response = await send().expect(200);
 
-			expect(Object.keys(bodyOf<object>(response))).toEqual(['access_token']);
-			expect(bodyOf<ResponseLogin>(response).access_token.split('.')).toHaveLength(3);
+			expect(bodyOf<ResponseBody<ResponseLogin>>(response).ok).toBe(true);
+			expect(bodyOf<ResponseBody<ResponseLogin>>(response).msg).toBe('Login successful');
+			expect(Object.keys(dataOf<object>(response))).toEqual(['access_token']);
+			expect(dataOf<ResponseLogin>(response).access_token.split('.')).toHaveLength(3);
 		});
 
 		it('needs no Authorization header and ignores an invalid one (public route)', async () => {
@@ -107,7 +110,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const verified = await verifyWithPublishedKey(
 				testApp,
-				bodyOf<ResponseLogin>(response).access_token,
+				dataOf<ResponseLogin>(response).access_token,
 			);
 			expect(verified.header.alg).toBe('RS256');
 			expect(verified.header.kid).toBe('iam-api-rsa-1');
@@ -118,7 +121,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const { payload } = await verifyWithPublishedKey(
 				testApp,
-				bodyOf<ResponseLogin>(response).access_token,
+				dataOf<ResponseLogin>(response).access_token,
 			);
 			expect(payload).toEqual({
 				sub: userId,
@@ -142,7 +145,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const { payload } = await verifyWithPublishedKey(
 				testApp,
-				bodyOf<ResponseLogin>(response).access_token,
+				dataOf<ResponseLogin>(response).access_token,
 			);
 			expect(JSON.stringify(payload)).not.toContain('$2');
 			expect(payload).not.toHaveProperty('password');
@@ -156,7 +159,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const { payload } = await verifyWithPublishedKey(
 				testApp,
-				bodyOf<ResponseLogin>(response).access_token,
+				dataOf<ResponseLogin>(response).access_token,
 			);
 			expect(payload.exp - payload.iat).toBe(TEST_JWT_EXPIRES_IN_SECONDS);
 			expect(payload.iat).toBeGreaterThanOrEqual(before - 1);
@@ -170,7 +173,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const { payload } = await verifyWithPublishedKey(
 				testApp,
-				bodyOf<ResponseLogin>(response).access_token,
+				dataOf<ResponseLogin>(response).access_token,
 			);
 			expect(
 				payload.apps.application.roles.map((role: { name: string }) => role.name).sort(),
@@ -187,9 +190,9 @@ describe('POST /internal-users/login (e2e)', () => {
 			const admin = await testApp
 				.http()
 				.get('/applications')
-				.set('Authorization', `Bearer ${bodyOf<ResponseLogin>(response).access_token}`)
+				.set('Authorization', `Bearer ${dataOf<ResponseLogin>(response).access_token}`)
 				.expect(403);
-			expect(bodyOf<ErrorBody>(admin).message).toBe(
+			expect(bodyOf<ErrorBody>(admin).msg).toBe(
 				'This token was not issued for the iam application',
 			);
 		});
@@ -202,7 +205,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const verified = await verifyWithPublishedKey(
 				testApp,
-				bodyOf<ResponseLogin>(login).access_token,
+				dataOf<ResponseLogin>(login).access_token,
 			);
 			expect(verified.payload.apps.application.roles.map((r: { name: string }) => r.name)).toEqual([
 				'ADMIN',
@@ -211,7 +214,7 @@ describe('POST /internal-users/login (e2e)', () => {
 				await testApp
 					.http()
 					.get(path)
-					.set('Authorization', `Bearer ${bodyOf<ResponseLogin>(login).access_token}`)
+					.set('Authorization', `Bearer ${dataOf<ResponseLogin>(login).access_token}`)
 					.expect(200);
 			}
 		});
@@ -229,7 +232,7 @@ describe('POST /internal-users/login (e2e)', () => {
 			await testApp
 				.http()
 				.get('/applications')
-				.set('Authorization', `Bearer ${bodyOf<ResponseLogin>(login).access_token}`)
+				.set('Authorization', `Bearer ${dataOf<ResponseLogin>(login).access_token}`)
 				.expect(200);
 		});
 
@@ -247,23 +250,23 @@ describe('POST /internal-users/login (e2e)', () => {
 				.expect(201);
 			await grantInternalUserApplication(
 				testApp.dataSource,
-				bodyOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserCreatedResponse>(created).id,
 				iam.iamApplication.id,
 			);
 			await grantInternalUserApplication(
 				testApp.dataSource,
-				bodyOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserCreatedResponse>(created).id,
 				billingId,
 			);
 			await connectInternalUser(
 				testApp.dataSource,
-				bodyOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserCreatedResponse>(created).id,
 				iam.iamApplication.id,
 				billingId,
 			);
 			await grantInternalUserRole(
 				testApp.dataSource,
-				bodyOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserCreatedResponse>(created).id,
 				payer,
 			);
 
@@ -272,7 +275,7 @@ describe('POST /internal-users/login (e2e)', () => {
 				password: 'brand-new-pass',
 			}).expect(200);
 
-			expect(bodyOf<ResponseLogin>(response).access_token).toEqual(expect.any(String));
+			expect(dataOf<ResponseLogin>(response).access_token).toEqual(expect.any(String));
 		});
 
 		it('rejects the stored bcrypt hash used as the password', async () => {
@@ -288,21 +291,13 @@ describe('POST /internal-users/login (e2e)', () => {
 		it('returns 401 Invalid credentials for a wrong secret', async () => {
 			const response = await send(WRONG_CREDENTIALS).expect(401);
 
-			expect(response.body).toEqual({
-				statusCode: 401,
-				error: 'Unauthorized',
-				message: 'Invalid credentials',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Invalid credentials', data: null });
 		});
 
 		it('returns 401 Invalid credentials for an unknown user', async () => {
 			const response = await send(UNKNOWN_CREDENTIALS).expect(401);
 
-			expect(response.body).toEqual({
-				statusCode: 401,
-				error: 'Unauthorized',
-				message: 'Invalid credentials',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Invalid credentials', data: null });
 		});
 
 		it('answers an unknown user and a wrong secret with the same body, so the user existence is not revealed', async () => {
@@ -318,13 +313,13 @@ describe('POST /internal-users/login (e2e)', () => {
 				target: 'nope',
 			}).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid credentials');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid credentials');
 		});
 
 		it('does not issue a token for a wrong secret', async () => {
 			const response = await send(WRONG_CREDENTIALS).expect(401);
 
-			expect(response.body).not.toHaveProperty('access_token');
+			expect(dataOf<object | null>(response)).toBeNull();
 		});
 	});
 
@@ -335,7 +330,7 @@ describe('POST /internal-users/login (e2e)', () => {
 				password: 'user-password-1',
 			}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual(['email must be an email']);
+			expect(bodyOf<ErrorBody>(response).msg).toBe('email must be an email');
 		});
 
 		it('returns 400 when the password is empty', async () => {
@@ -344,7 +339,7 @@ describe('POST /internal-users/login (e2e)', () => {
 				password: '',
 			}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual(['password should not be empty']);
+			expect(bodyOf<ErrorBody>(response).msg).toBe('password should not be empty');
 		});
 
 		it('returns 400 when the email is longer than 30 characters', async () => {
@@ -353,9 +348,9 @@ describe('POST /internal-users/login (e2e)', () => {
 				password: 'user-password-1',
 			}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'email must be shorter than or equal to 30 characters',
-			]);
+			);
 		});
 
 		it('returns 400 when the body is empty', async () => {
@@ -365,25 +360,25 @@ describe('POST /internal-users/login (e2e)', () => {
 		it('returns 400 when x-origin-application is missing', async () => {
 			const response = await send(CREDENTIALS, { origin: null }).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('x-origin-application header is required');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('x-origin-application header is required');
 		});
 
 		it('returns 400 when x-target-application is missing', async () => {
 			const response = await send(CREDENTIALS, { target: null }).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('x-target-application header is required');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('x-target-application header is required');
 		});
 
 		it('returns 400 when x-origin-application is blank', async () => {
 			const response = await send(CREDENTIALS, { origin: '   ' }).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('x-origin-application header is required');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('x-origin-application header is required');
 		});
 
 		it('returns 400 when x-target-application is blank', async () => {
 			const response = await send(CREDENTIALS, { target: '   ' }).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('x-target-application header is required');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('x-target-application header is required');
 		});
 	});
 
@@ -391,17 +386,13 @@ describe('POST /internal-users/login (e2e)', () => {
 		it('returns 404 when the origin application does not exist', async () => {
 			const response = await send(CREDENTIALS, { origin: 'missing' }).expect(404);
 
-			expect(response.body).toEqual({
-				statusCode: 404,
-				error: 'Not Found',
-				message: 'Origin application not found',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Origin application not found', data: null });
 		});
 
 		it('returns 404 when the target application does not exist', async () => {
 			const response = await send(CREDENTIALS, { target: 'missing' }).expect(404);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Target application not found');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Target application not found');
 		});
 	});
 
@@ -412,9 +403,9 @@ describe('POST /internal-users/login (e2e)', () => {
 			const response = await send(CREDENTIALS, { origin: other.name }).expect(403);
 
 			expect(response.body).toEqual({
-				statusCode: 403,
-				error: 'Forbidden',
-				message: 'No access to the origin application',
+				ok: false,
+				msg: 'No access to the origin application',
+				data: null,
 			});
 		});
 
@@ -423,7 +414,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const response = await send(CREDENTIALS, { target: other.name }).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('No access to the target application');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('No access to the target application');
 		});
 
 		it('returns 403 when there is no connection between origin and target', async () => {
@@ -433,9 +424,9 @@ describe('POST /internal-users/login (e2e)', () => {
 			const response = await send(CREDENTIALS, { target: other.name }).expect(403);
 
 			expect(response.body).toEqual({
-				statusCode: 403,
-				error: 'Forbidden',
-				message: 'No connection allowed between these applications',
+				ok: false,
+				msg: 'No connection allowed between these applications',
+				data: null,
 			});
 		});
 
@@ -445,7 +436,7 @@ describe('POST /internal-users/login (e2e)', () => {
 				target: 'iam',
 			}).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'No connection allowed between these applications',
 			);
 		});
@@ -456,9 +447,9 @@ describe('POST /internal-users/login (e2e)', () => {
 			const response = await send().expect(403);
 
 			expect(response.body).toEqual({
-				statusCode: 403,
-				error: 'Forbidden',
-				message: 'No roles assigned in the target application',
+				ok: false,
+				msg: 'No roles assigned in the target application',
+				data: null,
 			});
 		});
 
@@ -476,7 +467,7 @@ describe('POST /internal-users/login (e2e)', () => {
 
 			const response = await send().expect(403);
 
-			expect(response.body).not.toHaveProperty('access_token');
+			expect(dataOf<object | null>(response)).toBeNull();
 		});
 	});
 });

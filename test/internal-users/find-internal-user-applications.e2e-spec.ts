@@ -16,7 +16,7 @@ import {
 	authorizationSignedByAnotherKey,
 	expiredAuthorization,
 } from '../helpers/test-auth';
-import { bodyOf, ErrorBody } from '../helpers/response-types';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
 import { InternalUserApplicationRolesResponse } from '../../src/modules/internal-users/dto/internal-user-application-roles-response.dto';
 
 describe('GET /internal-users/:id/applications (e2e)', () => {
@@ -54,7 +54,11 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 	it('returns 200 with an empty list when the user has no assignments', async () => {
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual([]);
+		expect(response.body).toEqual({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+			data: [],
+		});
 	});
 
 	it('returns an assigned application with an empty role list', async () => {
@@ -62,14 +66,18 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual([
-			{
-				applicationId: iam.iamApplication.id,
-				applicationName: 'iam',
-				applicationDescription: 'Identity and access management',
-				roles: [],
-			},
-		]);
+		expect(response.body).toEqual({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+			data: [
+				{
+					applicationId: iam.iamApplication.id,
+					applicationName: 'iam',
+					applicationDescription: 'Identity and access management',
+					roles: [],
+				},
+			],
+		});
 	});
 
 	it('returns the roles assigned to the user inside their own application', async () => {
@@ -78,14 +86,18 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual([
-			{
-				applicationId: iam.iamApplication.id,
-				applicationName: 'iam',
-				applicationDescription: 'Identity and access management',
-				roles: [{ id: iam.adminRole.id, name: 'ADMIN', description: 'Administrator' }],
-			},
-		]);
+		expect(response.body).toEqual({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+			data: [
+				{
+					applicationId: iam.iamApplication.id,
+					applicationName: 'iam',
+					applicationDescription: 'Identity and access management',
+					roles: [{ id: iam.adminRole.id, name: 'ADMIN', description: 'Administrator' }],
+				},
+			],
+		});
 	});
 
 	it('lists an application that was only reached through a role assignment', async () => {
@@ -93,11 +105,11 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toHaveLength(1);
-		expect(bodyOf<InternalUserApplicationRolesResponse[]>(response)[0].applicationId).toBe(
+		expect(dataOf<unknown[]>(response)).toHaveLength(1);
+		expect(dataOf<InternalUserApplicationRolesResponse[]>(response)[0].applicationId).toBe(
 			iam.iamApplication.id,
 		);
-		expect(bodyOf<InternalUserApplicationRolesResponse[]>(response)[0].roles).toHaveLength(1);
+		expect(dataOf<InternalUserApplicationRolesResponse[]>(response)[0].roles).toHaveLength(1);
 	});
 
 	it('keeps the roles grouped under the application they belong to', async () => {
@@ -111,7 +123,7 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 		const response = await send().expect(200);
 
 		const byName = Object.fromEntries(
-			bodyOf<InternalUserApplicationRolesResponse[]>(response).map(
+			dataOf<InternalUserApplicationRolesResponse[]>(response).map(
 				(entry: { applicationName: string; roles: { name: string }[] }) => [
 					entry.applicationName,
 					entry.roles.map((role) => role.name),
@@ -131,27 +143,27 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual([]);
+		expect(response.body).toEqual({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+			data: [],
+		});
 	});
 
 	describe('errors', () => {
 		it('returns 404 when the user does not exist', async () => {
 			const response = await send(adminAuthorization(), 999999).expect(404);
 
-			expect(response.body).toEqual({
-				statusCode: 404,
-				error: 'Not Found',
-				message: 'Internal user not found',
-			});
+			expect(response.body).toEqual({ ok: false, msg: 'Internal user not found', data: null });
 		});
 
 		it('returns 400 when the id is not numeric', async () => {
 			const response = await send(adminAuthorization(), 'abc').expect(400);
 
 			expect(response.body).toEqual({
-				statusCode: 400,
-				error: 'Bad Request',
-				message: 'Validation failed (numeric string is expected)',
+				ok: false,
+				msg: 'Validation failed (numeric string is expected)',
+				data: null,
 			});
 		});
 
@@ -165,34 +177,34 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 			const response = await send(null).expect(401);
 
 			expect(response.body).toEqual({
-				statusCode: 401,
-				error: 'Unauthorized',
-				message: 'Missing or malformed bearer token',
+				ok: false,
+				msg: 'Missing or malformed bearer token',
+				data: null,
 			});
 		});
 
 		it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
 			const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Missing or malformed bearer token');
 		});
 
 		it('returns 401 when the token is not a JWT', async () => {
 			const response = await send('Bearer not-a-jwt').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is signed with a key the app does not trust', async () => {
 			const response = await send(authorizationSignedByAnotherKey()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is expired', async () => {
 			const response = await send(expiredAuthorization()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -200,7 +212,7 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 				403,
 			);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'This token was not issued for the iam application',
 			);
 		});
@@ -208,13 +220,13 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 		it('returns 403 when the token only has a role other than ADMIN', async () => {
 			const response = await send(authorizationHeaderFor({ roles: ['VIEWER'] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 403 when the token carries no roles (deny by default)', async () => {
 			const response = await send(authorizationHeaderFor({ roles: [] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {
@@ -223,8 +235,9 @@ describe('GET /internal-users/:id/applications (e2e)', () => {
 			).expect(500);
 
 			expect(response.body).toEqual({
-				statusCode: 500,
-				message: 'An unexpected error occurred. Please try again later.',
+				ok: false,
+				msg: 'An unexpected error occurred. Please try again later.',
+				data: null,
 			});
 		});
 	});

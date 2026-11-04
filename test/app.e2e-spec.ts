@@ -4,7 +4,7 @@ import { ApplicationResponse } from '../src/modules/applications/dto/application
 import { JwksResponse } from '../src/modules/jwks/dto/jwks-response.dto';
 import { RoleResponse } from '../src/modules/roles/dto/role-response.dto';
 import { AppTestApp, createAppTestApp } from './helpers/app-test-app';
-import { bodyOf, dataOf } from './helpers/response-types';
+import { dataOf } from './helpers/response-types';
 import { seedIamAdmin } from './helpers/seed';
 import { adminAuthorization, authorizationHeaderFor } from './helpers/test-auth';
 
@@ -29,7 +29,7 @@ describe('AppModule (e2e smoke)', () => {
 	it('boots the real AppModule and serves the public JWKS without a token', async () => {
 		const response = await testApp.http().get('/.well-known/jwks.json').expect(200);
 
-		expect(bodyOf<JwksResponse>(response).keys).toHaveLength(1);
+		expect(dataOf<JwksResponse>(response).keys).toHaveLength(1);
 	});
 
 	it('returns 404 for a route that does not exist', async () => {

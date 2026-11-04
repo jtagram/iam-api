@@ -56,6 +56,7 @@ describe('AppUsersService.create', () => {
 
 	it('returns the plaintext secret once, with the created user data', async () => {
 		await expect(service.create(dto)).resolves.toEqual({
+			ok: true,
 			msg: 'Application user created successfully — store clienteSecret now, it cannot be retrieved again',
 			data: {
 				id: 3,

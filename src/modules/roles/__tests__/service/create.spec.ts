@@ -76,6 +76,7 @@ describe('RolesService.create', () => {
 
 	it('returns the created role wrapped in a ResponseBody', async () => {
 		await expect(service.create(dto)).resolves.toEqual({
+			ok: true,
 			msg: 'Role created successfully',
 			data: {
 				id: 11,

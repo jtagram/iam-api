@@ -14,7 +14,9 @@ import { AppUserConnectionsRepository } from '../../common/database/app-user-con
 import { UserAppsRepository } from '../../common/database/user-application/user-apps.repository';
 import { UserRolesRepository } from '../../common/database/user-role/user-roles.repository';
 import { AppsPayloadMapper } from '../../common/jwt/apps-payload.mapper';
+import { ResponseBody } from '../../common/dto/response-body.dto';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
+import { AppUserMapper } from './app-user.mapper';
 import { LoginDto } from './dto/login.dto';
 import { AppUserPayloadJwt } from './app-user-payload-jwt';
 
@@ -49,7 +51,7 @@ export class AppUsersLoginService {
 		dto: LoginDto,
 		originApplicationName: string,
 		targetApplicationName: string,
-	): Promise<ResponseLogin> {
+	): Promise<ResponseBody<ResponseLogin>> {
 		const appUser = await this.appUsersRepository.findByClienteId(dto.clienteId);
 		if (!appUser) {
 			throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
@@ -113,7 +115,7 @@ export class AppUsersLoginService {
 
 		const access_token = this.jwtService.sign(payload, { expiresIn });
 
-		return new ResponseLogin(access_token);
+		return AppUserMapper.toLoginResponse(access_token);
 	}
 
 	private async assertHasApplicationAccess(

@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
 import { RolesRepository } from '../../common/database/role/roles.repository';
 import { ResponseBody } from '../../common/dto/response-body.dto';
+import { ApplicationRolesResponse } from './dto/application-roles-response.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { FindRolesQueryDto } from './dto/find-roles-query.dto';
 import { RoleMapper } from './role.mapper';
@@ -35,10 +36,7 @@ export class RolesService {
 		const roleEntity = RoleMapper.toEntity(dto);
 		const createdRole = await this.rolesRepository.createRole(roleEntity);
 
-		return ResponseBody.builder<RoleResponse>()
-			.withMsg('Role created successfully')
-			.withData(RoleMapper.toResponse(createdRole))
-			.build();
+		return RoleMapper.toCreateResponse(createdRole);
 	}
 
 	async findAllByApplicationId(query: FindRolesQueryDto): Promise<ResponseBody<RoleResponse[]>> {
@@ -49,9 +47,19 @@ export class RolesService {
 
 		const roles = await this.rolesRepository.findAllByApplicationId(query.applicationId);
 
-		return ResponseBody.builder<RoleResponse[]>()
-			.withMsg('Roles retrieved successfully')
-			.withData(roles.map((role) => RoleMapper.toResponse(role)))
-			.build();
+		return RoleMapper.toFindAllByApplicationIdResponse(roles);
+	}
+
+	async findAllGroupedByApplication(): Promise<ResponseBody<ApplicationRolesResponse[]>> {
+		const [applications, roles] = await Promise.all([
+			this.applicationsRepository.findAllOrderedByCreatedAtDesc(),
+			this.rolesRepository.findAllOrderedByCreatedAtDesc(),
+		]);
+
+		const applicationsRoles = applications.map((application) =>
+			RoleMapper.toApplicationRolesResponse(application, roles),
+		);
+
+		return RoleMapper.toFindAllGroupedByApplicationResponse(applicationsRoles);
 	}
 }

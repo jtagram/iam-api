@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createPublicKey, JsonWebKey } from 'crypto';
+import { ResponseBody } from '../../common/dto/response-body.dto';
 import { JWT_KEY_ID } from '../../common/jwt/jwt-key-id';
+import { JwksMapper } from './jwks.mapper';
 
 @Injectable()
 export class JwksService {
@@ -15,9 +17,9 @@ export class JwksService {
 		this.jwk = createPublicKey(publicKeyPem).export({ format: 'jwk' });
 	}
 
-	getJwks(): { keys: JsonWebKey[] } {
-		return {
+	getJwks(): ResponseBody<{ keys: JsonWebKey[] }> {
+		return JwksMapper.toGetJwksResponse({
 			keys: [{ ...this.jwk, use: 'sig', alg: 'RS256', kid: JWT_KEY_ID }],
-		};
+		});
 	}
 }

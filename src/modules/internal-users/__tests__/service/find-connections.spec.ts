@@ -58,22 +58,26 @@ describe('InternalUsersService.findConnections', () => {
 			{ id: 30, name: 'infra' },
 		]);
 
-		await expect(service.findConnections(1)).resolves.toEqual([
-			{
-				id: 1,
-				originApplicationId: 10,
-				originApplicationName: 'iam',
-				destinationApplicationId: 20,
-				destinationApplicationName: 'hub',
-			},
-			{
-				id: 2,
-				originApplicationId: 10,
-				originApplicationName: 'iam',
-				destinationApplicationId: 30,
-				destinationApplicationName: 'infra',
-			},
-		]);
+		await expect(service.findConnections(1)).resolves.toEqual({
+			ok: true,
+			msg: 'Connections retrieved successfully',
+			data: [
+				{
+					id: 1,
+					originApplicationId: 10,
+					originApplicationName: 'iam',
+					destinationApplicationId: 20,
+					destinationApplicationName: 'hub',
+				},
+				{
+					id: 2,
+					originApplicationId: 10,
+					originApplicationName: 'iam',
+					destinationApplicationId: 30,
+					destinationApplicationName: 'infra',
+				},
+			],
+		});
 		expect(connections.findAllByInternalUserId).toHaveBeenCalledWith(1);
 	});
 
@@ -103,7 +107,11 @@ describe('InternalUsersService.findConnections', () => {
 		connections.findAllByInternalUserId.mockResolvedValue([]);
 		applications.findByIds.mockResolvedValue([]);
 
-		await expect(service.findConnections(1)).resolves.toEqual([]);
+		await expect(service.findConnections(1)).resolves.toEqual({
+			ok: true,
+			msg: 'Connections retrieved successfully',
+			data: [],
+		});
 		expect(applications.findByIds).toHaveBeenCalledWith([]);
 	});
 
@@ -120,7 +128,7 @@ describe('InternalUsersService.findConnections', () => {
 
 		const result = await service.findConnections(1);
 
-		expect(result[0].destinationApplicationName).toBeUndefined();
+		expect(result.data![0].destinationApplicationName).toBeUndefined();
 	});
 
 	it('propagates a repository failure', async () => {

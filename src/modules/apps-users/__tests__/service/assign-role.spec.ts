@@ -88,6 +88,7 @@ describe('AppUsersService.assignRole', () => {
 
 	it('returns the created assignment', async () => {
 		await expect(service.assignRole(1, dto)).resolves.toEqual({
+			ok: true,
 			msg: 'Role assigned to user successfully',
 			data: { id: 80, appUserId: 1, roleId: 9, applicationId: 5 },
 		});

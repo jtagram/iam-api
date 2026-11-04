@@ -56,21 +56,13 @@ export class AppUsersService {
 		const appUserEntity = AppUserMapper.toEntity(dto, clienteId, hashedClienteSecret);
 		const createdAppUser = await this.appUsersRepository.createAppUser(appUserEntity);
 
-		return ResponseBody.builder<AppUserCreatedResponse>()
-			.withMsg(
-				'Application user created successfully — store clienteSecret now, it cannot be retrieved again',
-			)
-			.withData(AppUserMapper.toCreatedResponse(createdAppUser, plaintextClienteSecret))
-			.build();
+		return AppUserMapper.toCreateResponse(createdAppUser, plaintextClienteSecret);
 	}
 
 	async findAll(): Promise<ResponseBody<AppUserResponse[]>> {
 		const appUsers = await this.appUsersRepository.findAll();
 
-		return ResponseBody.builder<AppUserResponse[]>()
-			.withMsg('Application users retrieved successfully')
-			.withData(appUsers.map((appUser) => AppUserMapper.toResponse(appUser)))
-			.build();
+		return AppUserMapper.toFindAllResponse(appUsers);
 	}
 
 	hashSecret(secret: string): Promise<string> {
@@ -88,10 +80,6 @@ export class AppUsersService {
 		const userApps = await this.userAppsRepository.findAllByAppUserId(userId);
 		const userRoles = await this.userRolesRepository.findAllByAppUserId(userId);
 
-		// A role assignment (apps_users_roles) grants real access on its own —
-		// it's what login and downstream RolesGuards actually check — so an
-		// application must show up here even if it was only ever assigned
-		// through assignRole() and never went through assignApplication().
 		const applicationIds = new Set([
 			...userApps.map((userApp) => userApp.applicationId),
 			...userRoles.map((userRole) => userRole.applicationId),
@@ -115,10 +103,7 @@ export class AppUsersService {
 				})),
 		}));
 
-		return ResponseBody.builder<AppUserApplicationRolesResponse[]>()
-			.withMsg('Assigned applications retrieved successfully')
-			.withData(data)
-			.build();
+		return AppUserMapper.toFindAssignedApplicationsResponse(data);
 	}
 
 	async assignApplication(
@@ -148,10 +133,7 @@ export class AppUsersService {
 		entity.applicationId = dto.applicationId;
 		const created = await this.userAppsRepository.createAssignment(entity);
 
-		return ResponseBody.builder<UserAppEntity>()
-			.withMsg('Application assigned to user successfully')
-			.withData(created)
-			.build();
+		return AppUserMapper.toAssignApplicationResponse(created);
 	}
 
 	async assignRole(userId: number, dto: AssignRoleDto): Promise<ResponseBody<UserRoleEntity>> {
@@ -179,10 +161,7 @@ export class AppUsersService {
 		entity.applicationId = role.applicationId;
 		const created = await this.userRolesRepository.createAssignment(entity);
 
-		return ResponseBody.builder<UserRoleEntity>()
-			.withMsg('Role assigned to user successfully')
-			.withData(created)
-			.build();
+		return AppUserMapper.toAssignRoleResponse(created);
 	}
 
 	async findConnections(userId: number): Promise<ResponseBody<ConnectionResponse[]>> {
@@ -193,10 +172,7 @@ export class AppUsersService {
 
 		const connections = await this.appUserConnectionsRepository.findAllByAppUserId(userId);
 
-		return ResponseBody.builder<ConnectionResponse[]>()
-			.withMsg('Connections retrieved successfully')
-			.withData(await this.toConnectionResponses(connections))
-			.build();
+		return AppUserMapper.toFindConnectionsResponse(await this.toConnectionResponses(connections));
 	}
 
 	async createConnection(
@@ -246,10 +222,7 @@ export class AppUsersService {
 		const created = await this.appUserConnectionsRepository.createConnection(entity);
 
 		const [response] = await this.toConnectionResponses([created]);
-		return ResponseBody.builder<ConnectionResponse>()
-			.withMsg('Connection created successfully')
-			.withData(response)
-			.build();
+		return AppUserMapper.toCreateConnectionResponse(response);
 	}
 
 	private async toConnectionResponses(

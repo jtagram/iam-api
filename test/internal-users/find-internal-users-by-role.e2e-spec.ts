@@ -15,7 +15,7 @@ import {
 	authorizationSignedByAnotherKey,
 	expiredAuthorization,
 } from '../helpers/test-auth';
-import { bodyOf, ErrorBody } from '../helpers/response-types';
+import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
 import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
 
 describe('GET /internal-users/by-role (e2e)', () => {
@@ -88,14 +88,14 @@ describe('GET /internal-users/by-role (e2e)', () => {
 		it('returns 200 with a bare array of the users holding the role in the application', async () => {
 			const response = await send().expect(200);
 
-			expect(response.body).toHaveLength(2);
-			expect(response.body).toContainEqual({
+			expect(dataOf<unknown[]>(response)).toHaveLength(2);
+			expect(dataOf<unknown[]>(response)).toContainEqual({
 				id: iam.adminUser.id,
 				name: 'Admin',
 				lastname: 'Istrator',
 				email: 'admin@example.com',
 			});
-			expect(response.body).toContainEqual({
+			expect(dataOf<unknown[]>(response)).toContainEqual({
 				id: bobId,
 				name: 'Bob',
 				lastname: 'Lastname',
@@ -109,7 +109,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: 'ADMIN,EDITOR',
 			}).expect(200);
 
-			expect(emails(bodyOf<InternalUserCreatedResponse[]>(response))).toEqual([
+			expect(emails(dataOf<InternalUserCreatedResponse[]>(response))).toEqual([
 				'admin@example.com',
 				'alice@example.com',
 				'bob@example.com',
@@ -122,7 +122,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: ' EDITOR , ,',
 			}).expect(200);
 
-			expect(emails(bodyOf<InternalUserCreatedResponse[]>(response))).toEqual([
+			expect(emails(dataOf<InternalUserCreatedResponse[]>(response))).toEqual([
 				'alice@example.com',
 				'bob@example.com',
 			]);
@@ -134,7 +134,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: 'ADMIN',
 			}).expect(200);
 
-			expect(emails(bodyOf<InternalUserCreatedResponse[]>(response))).toEqual([
+			expect(emails(dataOf<InternalUserCreatedResponse[]>(response))).toEqual([
 				'carol@example.com',
 			]);
 		});
@@ -145,7 +145,11 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: 'UNKNOWN',
 			}).expect(200);
 
-			expect(response.body).toEqual([]);
+			expect(response.body).toEqual({
+				ok: true,
+				msg: 'Internal users retrieved successfully',
+				data: [],
+			});
 		});
 
 		it('returns an empty array when the roles list only has separators', async () => {
@@ -154,20 +158,24 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: ',',
 			}).expect(200);
 
-			expect(response.body).toEqual([]);
+			expect(response.body).toEqual({
+				ok: true,
+				msg: 'Internal users retrieved successfully',
+				data: [],
+			});
 		});
 
 		it('does not mix the route up with /internal-users/:id/applications', async () => {
 			const response = await send().expect(200);
 
-			expect(Array.isArray(response.body)).toBe(true);
+			expect(Array.isArray(dataOf<unknown>(response))).toBe(true);
 		});
 
 		it('never exposes the stored password hash', async () => {
 			const response = await send().expect(200);
 
-			expect(JSON.stringify(response.body)).not.toContain('$2');
-			expect(Object.keys(bodyOf<InternalUserCreatedResponse[]>(response)[0]).sort()).toEqual([
+			expect(JSON.stringify(dataOf<unknown>(response))).not.toContain('$2');
+			expect(Object.keys(dataOf<InternalUserCreatedResponse[]>(response)[0]).sort()).toEqual([
 				'email',
 				'id',
 				'lastname',
@@ -182,9 +190,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: 'ADMIN',
 			}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual(
-				expect.arrayContaining(['applicationName should not be empty']),
-			);
+			expect(bodyOf<ErrorBody>(response).msg).toContain('applicationName should not be empty');
 		});
 
 		it('returns 400 when roles is missing', async () => {
@@ -192,9 +198,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				applicationName: 'iam',
 			}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual(
-				expect.arrayContaining(['roles should not be empty']),
-			);
+			expect(bodyOf<ErrorBody>(response).msg).toContain('roles should not be empty');
 		});
 
 		it('returns 400 when applicationName is longer than 15 characters', async () => {
@@ -203,9 +207,9 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: 'ADMIN',
 			}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).message).toEqual([
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'applicationName must be shorter than or equal to 15 characters',
-			]);
+			);
 		});
 
 		it('returns 400 when roles is empty', async () => {
@@ -222,11 +226,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 			roles: 'ADMIN',
 		}).expect(404);
 
-		expect(response.body).toEqual({
-			statusCode: 404,
-			error: 'Not Found',
-			message: 'Application not found',
-		});
+		expect(response.body).toEqual({ ok: false, msg: 'Application not found', data: null });
 	});
 
 	describe('authorization', () => {
@@ -234,34 +234,34 @@ describe('GET /internal-users/by-role (e2e)', () => {
 			const response = await send(null).expect(401);
 
 			expect(response.body).toEqual({
-				statusCode: 401,
-				error: 'Unauthorized',
-				message: 'Missing or malformed bearer token',
+				ok: false,
+				msg: 'Missing or malformed bearer token',
+				data: null,
 			});
 		});
 
 		it('returns 401 when the Authorization header does not use the Bearer scheme', async () => {
 			const response = await send('Basic dXNlcjpwYXNz').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Missing or malformed bearer token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Missing or malformed bearer token');
 		});
 
 		it('returns 401 when the token is not a JWT', async () => {
 			const response = await send('Bearer not-a-jwt').expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is signed with a key the app does not trust', async () => {
 			const response = await send(authorizationSignedByAnotherKey()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 401 when the token is expired', async () => {
 			const response = await send(expiredAuthorization()).expect(401);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('Invalid or expired token');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('Invalid or expired token');
 		});
 
 		it('returns 403 when the token was issued for another application, even with the ADMIN role', async () => {
@@ -269,7 +269,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				403,
 			);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe(
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
 				'This token was not issued for the iam application',
 			);
 		});
@@ -277,13 +277,13 @@ describe('GET /internal-users/by-role (e2e)', () => {
 		it('returns 403 when the token only has a role other than ADMIN', async () => {
 			const response = await send(authorizationHeaderFor({ roles: ['VIEWER'] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 403 when the token carries no roles (deny by default)', async () => {
 			const response = await send(authorizationHeaderFor({ roles: [] })).expect(403);
 
-			expect(bodyOf<ErrorBody>(response).message).toBe('You do not have the required role');
+			expect(bodyOf<ErrorBody>(response).msg).toBe('You do not have the required role');
 		});
 
 		it('returns 500 with the generic message when a verified token has no apps claim (documents current behavior)', async () => {
@@ -292,8 +292,9 @@ describe('GET /internal-users/by-role (e2e)', () => {
 			).expect(500);
 
 			expect(response.body).toEqual({
-				statusCode: 500,
-				message: 'An unexpected error occurred. Please try again later.',
+				ok: false,
+				msg: 'An unexpected error occurred. Please try again later.',
+				data: null,
 			});
 		});
 	});

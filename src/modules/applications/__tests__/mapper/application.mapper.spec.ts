@@ -38,3 +38,41 @@ describe('ApplicationMapper.toResponse', () => {
 		});
 	});
 });
+
+describe('ApplicationMapper.toCreateResponse', () => {
+	it('wraps the mapped application in a success envelope', () => {
+		const entity = Object.assign(new ApplicationEntity(), {
+			id: 4,
+			name: 'iam',
+			description: 'Identity',
+		});
+
+		expect(ApplicationMapper.toCreateResponse(entity)).toMatchObject({
+			ok: true,
+			msg: 'Application created successfully',
+			data: { id: 4, name: 'iam', description: 'Identity' },
+		});
+	});
+});
+
+describe('ApplicationMapper.toFindAllResponse', () => {
+	it('wraps every mapped application in a success envelope', () => {
+		const entities = [
+			Object.assign(new ApplicationEntity(), { id: 1, name: 'iam', description: 'a' }),
+			Object.assign(new ApplicationEntity(), { id: 2, name: 'crm', description: 'b' }),
+		];
+
+		expect(ApplicationMapper.toFindAllResponse(entities)).toMatchObject({
+			ok: true,
+			msg: 'Applications retrieved successfully',
+			data: [
+				{ id: 1, name: 'iam', description: 'a' },
+				{ id: 2, name: 'crm', description: 'b' },
+			],
+		});
+	});
+
+	it('returns an empty list when there are no applications', () => {
+		expect(ApplicationMapper.toFindAllResponse([])).toMatchObject({ ok: true, data: [] });
+	});
+});

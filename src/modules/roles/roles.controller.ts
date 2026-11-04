@@ -7,7 +7,12 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { FindRolesQueryDto } from './dto/find-roles-query.dto';
 import { RolesService } from './roles.service';
 import { RoleResponse } from './dto/role-response.dto';
-import { ApiCreateRole, ApiFindRoles } from './swagger/roles.swagger';
+import { ApplicationRolesResponse } from './dto/application-roles-response.dto';
+import {
+	ApiCreateRole,
+	ApiFindRoles,
+	ApiFindRolesGroupedByApplication,
+} from './swagger/roles.swagger';
 
 @ApiTags('Roles')
 @Controller('roles')
@@ -26,5 +31,11 @@ export class RolesController {
 	@ApiFindRoles()
 	findAll(@Query() query: FindRolesQueryDto): Promise<ResponseBody<RoleResponse[]>> {
 		return this.rolesService.findAllByApplicationId(query);
+	}
+
+	@Get('grouped-by-application')
+	@ApiFindRolesGroupedByApplication()
+	findAllGroupedByApplication(): Promise<ResponseBody<ApplicationRolesResponse[]>> {
+		return this.rolesService.findAllGroupedByApplication();
 	}
 }
