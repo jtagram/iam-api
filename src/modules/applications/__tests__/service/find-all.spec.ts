@@ -4,16 +4,16 @@ import { ApplicationsRepository } from '../../../../common/database/application/
 import { ApplicationsService } from '../../applications.service';
 
 describe('ApplicationsService.findAll', () => {
-	let repository: { findAll: ReturnType<typeof mockFn> };
+	let repository: { findAllOrderedByCreatedAtDesc: ReturnType<typeof mockFn> };
 	let service: ApplicationsService;
 
 	beforeEach(() => {
-		repository = { findAll: mockFn() };
+		repository = { findAllOrderedByCreatedAtDesc: mockFn() };
 		service = new ApplicationsService(repository as unknown as ApplicationsRepository);
 	});
 
 	it('maps every application to its response shape', async () => {
-		repository.findAll.mockResolvedValue([
+		repository.findAllOrderedByCreatedAtDesc.mockResolvedValue([
 			{ id: 1, name: 'iam', description: 'Identity', secret: 'hidden' },
 			{ id: 2, name: 'hub', description: 'Tickets' },
 		]);
@@ -29,7 +29,7 @@ describe('ApplicationsService.findAll', () => {
 	});
 
 	it('returns an empty list when there are no applications', async () => {
-		repository.findAll.mockResolvedValue([]);
+		repository.findAllOrderedByCreatedAtDesc.mockResolvedValue([]);
 
 		await expect(service.findAll()).resolves.toEqual({
 			ok: true,
@@ -40,7 +40,7 @@ describe('ApplicationsService.findAll', () => {
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		repository.findAll.mockRejectedValue(failure);
+		repository.findAllOrderedByCreatedAtDesc.mockRejectedValue(failure);
 
 		await expect(service.findAll()).rejects.toBe(failure);
 	});

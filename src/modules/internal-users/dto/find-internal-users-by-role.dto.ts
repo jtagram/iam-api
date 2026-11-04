@@ -5,11 +5,11 @@ export class FindInternalUsersByRoleDto {
 	@ApiProperty({
 		description: 'Name of the application the roles belong to.',
 		example: 'ticket-hub-api',
-		maxLength: 15,
+		maxLength: 30,
 	})
 	@IsString()
 	@IsNotEmpty()
-	@MaxLength(15)
+	@MaxLength(30)
 	applicationName!: string;
 
 	/** Comma-separated role names, e.g. `ADMIN,APPROVER`. */

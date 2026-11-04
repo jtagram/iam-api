@@ -81,7 +81,7 @@ export const ApiFindInternalUsersByRole = () =>
 		}),
 		ApiBadRequestResponse({
 			description:
-				'Invalid query: `applicationName` (max 15 characters) or `roles` is missing or empty.',
+				'Invalid query: `applicationName` (max 30 characters) or `roles` is missing or empty.',
 		}),
 		ApiNotFoundResponse({
 			description: '`Application not found`: no application has the given `applicationName`.',

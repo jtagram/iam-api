@@ -27,7 +27,7 @@ export class ApplicationsService {
 	}
 
 	async findAll(): Promise<ResponseBody<ApplicationResponse[]>> {
-		const applications = await this.applicationsRepository.findAll();
+		const applications = await this.applicationsRepository.findAllOrderedByCreatedAtDesc();
 
 		return ApplicationMapper.toFindAllResponse(applications);
 	}

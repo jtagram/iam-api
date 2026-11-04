@@ -91,21 +91,6 @@ describe('ApplicationsRepository (in-memory db)', () => {
 		});
 	});
 
-	describe('findAll', () => {
-		it('returns an empty list when there are no applications', async () => {
-			await expect(repository.findAll()).resolves.toEqual([]);
-		});
-
-		it('returns every application', async () => {
-			await repository.createApplication(buildApplication('a'));
-			await repository.createApplication(buildApplication('b'));
-
-			const all = await repository.findAll();
-
-			expect(all.map((application) => application.name).sort()).toEqual(['a', 'b']);
-		});
-	});
-
 	describe('findAllOrderedByCreatedAtDesc', () => {
 		it('returns every application, the most recently created first', async () => {
 			const first = await repository.createApplication(buildApplication('a'));

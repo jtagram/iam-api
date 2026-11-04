@@ -19,10 +19,6 @@ export class ApplicationsRepository {
 		return this.repository.findOne({ where: { id } });
 	}
 
-	findAll(): Promise<ApplicationEntity[]> {
-		return this.repository.find();
-	}
-
 	findAllOrderedByCreatedAtDesc(): Promise<ApplicationEntity[]> {
 		return this.repository.find({ order: { createdAt: 'DESC' } });
 	}

@@ -77,10 +77,10 @@ describe('POST /applications (e2e)', () => {
 			expect(await applicationCount()).toBe(2);
 		});
 
-		it('accepts a name of exactly 15 characters and a description of exactly 200', async () => {
+		it('accepts a name of exactly 30 characters and a description of exactly 200', async () => {
 			await send(
 				adminAuthorization(),
-				validBody({ name: 'a'.repeat(15), description: 'd'.repeat(200) }),
+				validBody({ name: 'a'.repeat(30), description: 'd'.repeat(200) }),
 			).expect(201);
 		});
 
@@ -120,14 +120,26 @@ describe('POST /applications (e2e)', () => {
 			expect(bodyOf<ErrorBody>(response).msg).toContain('name must be a string');
 		});
 
-		it('returns 400 when the name is longer than 15 characters', async () => {
-			const response = await send(adminAuthorization(), validBody({ name: 'a'.repeat(16) })).expect(
+		it('returns 400 when the name is longer than 30 characters', async () => {
+			const response = await send(adminAuthorization(), validBody({ name: 'a'.repeat(31) })).expect(
 				400,
 			);
 
 			expect(bodyOf<ErrorBody>(response).msg).toBe(
-				'name must be shorter than or equal to 15 characters',
+				'name must be shorter than or equal to 30 characters',
 			);
+		});
+
+		it('returns 400 when the name is empty', async () => {
+			const response = await send(adminAuthorization(), validBody({ name: '' })).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('name should not be empty');
+		});
+
+		it('returns 400 when the description is empty', async () => {
+			const response = await send(adminAuthorization(), validBody({ description: '' })).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('description should not be empty');
 		});
 
 		it('returns 400 when the description is longer than 200 characters', async () => {
@@ -142,7 +154,7 @@ describe('POST /applications (e2e)', () => {
 		});
 
 		it('does not persist anything when validation fails', async () => {
-			await send(adminAuthorization(), validBody({ name: 'a'.repeat(16) })).expect(400);
+			await send(adminAuthorization(), validBody({ name: 'a'.repeat(31) })).expect(400);
 
 			expect(await applicationCount()).toBe(1);
 		});

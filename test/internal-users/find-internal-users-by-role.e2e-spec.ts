@@ -201,14 +201,14 @@ describe('GET /internal-users/by-role (e2e)', () => {
 			expect(bodyOf<ErrorBody>(response).msg).toContain('roles should not be empty');
 		});
 
-		it('returns 400 when applicationName is longer than 15 characters', async () => {
+		it('returns 400 when applicationName is longer than 30 characters', async () => {
 			const response = await send(adminAuthorization(), {
-				applicationName: 'a'.repeat(16),
+				applicationName: 'a'.repeat(31),
 				roles: 'ADMIN',
 			}).expect(400);
 
 			expect(bodyOf<ErrorBody>(response).msg).toBe(
-				'applicationName must be shorter than or equal to 15 characters',
+				'applicationName must be shorter than or equal to 30 characters',
 			);
 		});
 

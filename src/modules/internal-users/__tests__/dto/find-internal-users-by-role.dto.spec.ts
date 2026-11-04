@@ -16,9 +16,9 @@ describe('FindInternalUsersByRoleDto', () => {
 		});
 	});
 
-	it('accepts an application name of exactly 15 characters', async () => {
+	it('accepts an application name of exactly 30 characters', async () => {
 		const dto = await validateQuery(FindInternalUsersByRoleDto, {
-			applicationName: 'x'.repeat(15),
+			applicationName: 'x'.repeat(30),
 			roles: 'ADMIN',
 		});
 
@@ -31,7 +31,7 @@ describe('FindInternalUsersByRoleDto', () => {
 		);
 
 		expect(messages).toEqual([
-			'applicationName must be shorter than or equal to 15 characters',
+			'applicationName must be shorter than or equal to 30 characters',
 			'applicationName should not be empty',
 			'applicationName must be a string',
 		]);
@@ -48,15 +48,15 @@ describe('FindInternalUsersByRoleDto', () => {
 		expect(messages).toEqual(['applicationName should not be empty']);
 	});
 
-	it('rejects an applicationName longer than 15 characters', async () => {
+	it('rejects an applicationName longer than 30 characters', async () => {
 		const messages = await validationMessages(() =>
 			validateQuery(FindInternalUsersByRoleDto, {
-				applicationName: 'x'.repeat(16),
+				applicationName: 'x'.repeat(31),
 				roles: 'ADMIN',
 			}),
 		);
 
-		expect(messages).toEqual(['applicationName must be shorter than or equal to 15 characters']);
+		expect(messages).toEqual(['applicationName must be shorter than or equal to 30 characters']);
 	});
 
 	it('rejects a missing roles value', async () => {

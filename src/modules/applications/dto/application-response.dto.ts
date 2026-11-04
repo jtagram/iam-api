@@ -7,7 +7,7 @@ export class ApplicationResponse {
 	@ApiProperty({
 		description: 'Unique application name.',
 		example: 'ticket-hub-api',
-		maxLength: 15,
+		maxLength: 30,
 	})
 	name: string;
 

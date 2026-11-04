@@ -13,9 +13,9 @@ describe('CreateApplicationDto', () => {
 		expect(dto).toEqual({ name: 'iam', description: 'Identity' });
 	});
 
-	it('accepts a name of exactly 15 characters', async () => {
+	it('accepts a name of exactly 30 characters', async () => {
 		const dto = await validateBody(CreateApplicationDto, {
-			name: 'x'.repeat(15),
+			name: 'x'.repeat(30),
 			description: 'd',
 		});
 
@@ -31,13 +31,20 @@ describe('CreateApplicationDto', () => {
 		expect(dto).toBeInstanceOf(CreateApplicationDto);
 	});
 
-	it('accepts an empty name (current behavior, no IsNotEmpty)', async () => {
-		const dto = await validateBody(CreateApplicationDto, {
-			name: '',
-			description: 'd',
-		});
+	it('rejects an empty name', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateApplicationDto, { name: '', description: 'd' }),
+		);
 
-		expect(dto).toBeInstanceOf(CreateApplicationDto);
+		expect(messages).toEqual(['name should not be empty']);
+	});
+
+	it('rejects an empty description', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateApplicationDto, { name: 'iam', description: '' }),
+		);
+
+		expect(messages).toEqual(['description should not be empty']);
 	});
 
 	it('rejects a missing name', async () => {
@@ -46,7 +53,8 @@ describe('CreateApplicationDto', () => {
 		);
 
 		expect(messages).toEqual([
-			'name must be shorter than or equal to 15 characters',
+			'name must be shorter than or equal to 30 characters',
+			'name should not be empty',
 			'name must be a string',
 		]);
 	});
@@ -57,20 +65,20 @@ describe('CreateApplicationDto', () => {
 		);
 
 		expect(messages).toEqual([
-			'name must be shorter than or equal to 15 characters',
+			'name must be shorter than or equal to 30 characters',
 			'name must be a string',
 		]);
 	});
 
-	it('rejects a name longer than 15 characters', async () => {
+	it('rejects a name longer than 30 characters', async () => {
 		const messages = await validationMessages(() =>
 			validateBody(CreateApplicationDto, {
-				name: 'x'.repeat(16),
+				name: 'x'.repeat(31),
 				description: 'd',
 			}),
 		);
 
-		expect(messages).toEqual(['name must be shorter than or equal to 15 characters']);
+		expect(messages).toEqual(['name must be shorter than or equal to 30 characters']);
 	});
 
 	it('rejects a missing description', async () => {
@@ -80,6 +88,7 @@ describe('CreateApplicationDto', () => {
 
 		expect(messages).toEqual([
 			'description must be shorter than or equal to 200 characters',
+			'description should not be empty',
 			'description must be a string',
 		]);
 	});
