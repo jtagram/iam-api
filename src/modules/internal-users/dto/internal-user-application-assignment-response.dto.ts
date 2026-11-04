@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-/** Documents the `InternalUserAppEntity` row returned when assigning an application. */
+/** Returned when an application is assigned to an internal user. */
 export class InternalUserApplicationAssignmentResponse {
 	@ApiProperty({ description: 'Assignment identifier.', example: 1 })
 	id: number;

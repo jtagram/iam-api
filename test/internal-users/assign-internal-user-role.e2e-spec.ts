@@ -105,7 +105,15 @@ describe('POST /internal-users/:id/roles (e2e)', () => {
 		it('returns 400 when roleId is missing', async () => {
 			const response = await send(adminAuthorization(), {}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).msg).toBe('roleId must be an integer number');
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
+				'roleId must be a positive number, roleId must be an integer number',
+			);
+		});
+
+		it('returns 400 when roleId is 0', async () => {
+			const response = await send(adminAuthorization(), validBody({ roleId: 0 })).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('roleId must be a positive number');
 		});
 
 		it('returns 400 when roleId is a numeric string', async () => {

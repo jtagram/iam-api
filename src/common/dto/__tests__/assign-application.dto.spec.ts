@@ -13,7 +13,18 @@ describe('AssignApplicationDto', () => {
 	it('rejects a missing applicationId', async () => {
 		const messages = await validationMessages(() => validateBody(AssignApplicationDto, {}));
 
-		expect(messages).toEqual(['applicationId must be an integer number']);
+		expect(messages).toEqual([
+			'applicationId must be a positive number',
+			'applicationId must be an integer number',
+		]);
+	});
+
+	it('rejects a non-positive applicationId', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(AssignApplicationDto, { applicationId: 0 }),
+		);
+
+		expect(messages).toEqual(['applicationId must be a positive number']);
 	});
 
 	it('rejects a decimal applicationId', async () => {
@@ -29,7 +40,10 @@ describe('AssignApplicationDto', () => {
 			validateBody(AssignApplicationDto, { applicationId: '3' }),
 		);
 
-		expect(messages).toEqual(['applicationId must be an integer number']);
+		expect(messages).toEqual([
+			'applicationId must be a positive number',
+			'applicationId must be an integer number',
+		]);
 	});
 
 	it('strips unknown properties', async () => {

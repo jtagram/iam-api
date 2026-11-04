@@ -14,7 +14,7 @@ import {
 } from '../../../common/swagger/api-response-body.decorator';
 import { InternalUserApplicationAssignmentResponse } from '../dto/internal-user-application-assignment-response.dto';
 import { InternalUserApplicationRolesResponse } from '../dto/internal-user-application-roles-response.dto';
-import { InternalUserCreatedResponse } from '../dto/internal-user-created-response.dto';
+import { InternalUserResponse } from '../dto/internal-user-response.dto';
 import { InternalUserRoleAssignmentResponse } from '../dto/internal-user-role-assignment-response.dto';
 
 const ApiUserIdParam = () =>
@@ -38,12 +38,12 @@ export const ApiCreateInternalUser = () =>
 		ApiProtected(),
 		ApiCreatedResponseBody({
 			description: 'Internal user created.',
-			type: InternalUserCreatedResponse,
+			type: InternalUserResponse,
 			msg: 'Internal user created successfully',
 		}),
 		ApiBadRequestResponse({
 			description:
-				'Invalid body: `name` / `lastname` (max 15 characters), `email` (valid email, max 30 characters) or `password` (8 to 72 characters) is missing or invalid.',
+				'Invalid body: `name` or `lastname` (max 30 characters), `email` (max 30 characters, valid email) or `password` (8 to 72 characters) is missing, not a string, empty or too long.',
 		}),
 		ApiConflictResponse({
 			description: '`Email already in use`: the `email` is already registered.',
@@ -54,12 +54,13 @@ export const ApiFindAllInternalUsers = () =>
 	applyDecorators(
 		ApiOperation({
 			summary: 'List internal users',
-			description: 'Returns every internal user. Requires the `ADMIN` role in the iam application.',
+			description:
+				'Returns every internal user, most recently created first. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiProtected(),
 		ApiOkResponseBody({
 			description: 'Internal users retrieved.',
-			type: InternalUserCreatedResponse,
+			type: InternalUserResponse,
 			isArray: true,
 			msg: 'Internal users retrieved successfully',
 		}),
@@ -75,7 +76,7 @@ export const ApiFindInternalUsersByRole = () =>
 		ApiProtected(),
 		ApiOkResponseBody({
 			description: 'Matching internal users (empty list if none match).',
-			type: InternalUserCreatedResponse,
+			type: InternalUserResponse,
 			isArray: true,
 			msg: 'Internal users retrieved successfully',
 		}),
@@ -129,7 +130,7 @@ export const ApiAssignInternalUserApplication = () =>
 			description: [
 				'Invalid request:',
 				INVALID_ID_CASE,
-				'- The body is invalid: `applicationId` is missing or not an integer.',
+				'- The body is invalid: `applicationId` is missing or not a positive integer.',
 			].join('\n'),
 		}),
 		ApiNotFoundResponse({
@@ -160,7 +161,7 @@ export const ApiAssignInternalUserRole = () =>
 			description: [
 				'Invalid request:',
 				INVALID_ID_CASE,
-				'- The body is invalid: `roleId` is missing or not an integer.',
+				'- The body is invalid: `roleId` is missing or not a positive integer.',
 			].join('\n'),
 		}),
 		ApiNotFoundResponse({
@@ -176,7 +177,7 @@ export const ApiFindInternalUserConnections = () =>
 		ApiOperation({
 			summary: 'List the connections of an internal user',
 			description:
-				'Returns the origin to destination application connections of the user. Requires the `ADMIN` role in the iam application.',
+				'Returns the origin to destination application connections of the user, most recently created first. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
@@ -212,7 +213,7 @@ export const ApiCreateInternalUserConnection = () =>
 			description: [
 				'Invalid request:',
 				INVALID_ID_CASE,
-				'- The body is invalid: `originApplicationId` or `destinationApplicationId` is missing or not an integer.',
+				'- The body is invalid: `originApplicationId` or `destinationApplicationId` is missing or not a positive integer.',
 				'- `Origin and destination applications must be different`',
 				'- `The user does not have this application assigned`: the origin or destination application is not assigned to the user.',
 			].join('\n'),

@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity({ name: 'internal_users' })
 export class InternalUserEntity {
@@ -16,6 +16,9 @@ export class InternalUserEntity {
 
 	@Column({ length: 60 })
 	password!: string;
+
+	@CreateDateColumn({ name: 'created_at' })
+	createdAt!: Date;
 
 	static builder(): InternalUserEntityBuilder {
 		return new InternalUserEntityBuilder();

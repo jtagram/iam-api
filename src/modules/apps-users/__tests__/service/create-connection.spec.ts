@@ -106,6 +106,17 @@ describe('AppUsersService.createConnection', () => {
 		expect(connections.createConnection).not.toHaveBeenCalled();
 	});
 
+	it('checks both assignments before rejecting a missing one', async () => {
+		userApps.existsForAppUserAndApplication.mockResolvedValue(false);
+
+		await expect(service.createConnection(1, dto)).rejects.toThrow(
+			new BadRequestException('The user does not have this application assigned'),
+		);
+		expect(userApps.existsForAppUserAndApplication).toHaveBeenCalledTimes(2);
+		expect(userApps.existsForAppUserAndApplication).toHaveBeenCalledWith(1, 10);
+		expect(userApps.existsForAppUserAndApplication).toHaveBeenCalledWith(1, 20);
+	});
+
 	it('throws Conflict when the connection already exists', async () => {
 		connections.existsForAppUserAndApplications.mockResolvedValue(true);
 

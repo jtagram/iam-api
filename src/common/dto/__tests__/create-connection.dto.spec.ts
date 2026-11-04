@@ -21,7 +21,10 @@ describe('CreateConnectionDto', () => {
 			validateBody(CreateConnectionDto, { destinationApplicationId: 2 }),
 		);
 
-		expect(messages).toEqual(['originApplicationId must be an integer number']);
+		expect(messages).toEqual([
+			'originApplicationId must be a positive number',
+			'originApplicationId must be an integer number',
+		]);
 	});
 
 	it('rejects a missing destinationApplicationId', async () => {
@@ -29,14 +32,30 @@ describe('CreateConnectionDto', () => {
 			validateBody(CreateConnectionDto, { originApplicationId: 1 }),
 		);
 
-		expect(messages).toEqual(['destinationApplicationId must be an integer number']);
+		expect(messages).toEqual([
+			'destinationApplicationId must be a positive number',
+			'destinationApplicationId must be an integer number',
+		]);
+	});
+
+	it('rejects zero ids', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateConnectionDto, { originApplicationId: 0, destinationApplicationId: 0 }),
+		);
+
+		expect(messages).toEqual([
+			'originApplicationId must be a positive number',
+			'destinationApplicationId must be a positive number',
+		]);
 	});
 
 	it('reports both fields when the body is empty', async () => {
 		const messages = await validationMessages(() => validateBody(CreateConnectionDto, {}));
 
 		expect(messages).toEqual([
+			'originApplicationId must be a positive number',
 			'originApplicationId must be an integer number',
+			'destinationApplicationId must be a positive number',
 			'destinationApplicationId must be an integer number',
 		]);
 	});
@@ -49,7 +68,11 @@ describe('CreateConnectionDto', () => {
 			}),
 		);
 
-		expect(messages).toHaveLength(2);
+		expect(messages).toEqual([
+			'originApplicationId must be an integer number',
+			'destinationApplicationId must be a positive number',
+			'destinationApplicationId must be an integer number',
+		]);
 	});
 
 	it('accepts equal ids (the same-application rule lives in the service)', async () => {

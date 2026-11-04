@@ -21,7 +21,7 @@ import { InternalUsersService } from './internal-users.service';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { InternalUserApplicationAssignmentResponse } from './dto/internal-user-application-assignment-response.dto';
 import { InternalUserRoleAssignmentResponse } from './dto/internal-user-role-assignment-response.dto';
-import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
+import { InternalUserResponse } from './dto/internal-user-response.dto';
 import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
 import { FindInternalUsersByRoleDto } from './dto/find-internal-users-by-role.dto';
 import {
@@ -44,13 +44,13 @@ export class InternalUsersController {
 	@Post()
 	@HttpCode(HttpStatus.CREATED)
 	@ApiCreateInternalUser()
-	create(@Body() dto: CreateInternalUserDto): Promise<ResponseBody<InternalUserCreatedResponse>> {
+	create(@Body() dto: CreateInternalUserDto): Promise<ResponseBody<InternalUserResponse>> {
 		return this.internalUsersService.create(dto);
 	}
 
 	@Get()
 	@ApiFindAllInternalUsers()
-	findAll(): Promise<ResponseBody<InternalUserCreatedResponse[]>> {
+	findAll(): Promise<ResponseBody<InternalUserResponse[]>> {
 		return this.internalUsersService.findAll();
 	}
 
@@ -58,7 +58,7 @@ export class InternalUsersController {
 	@ApiFindInternalUsersByRole()
 	findByApplicationAndRoles(
 		@Query() query: FindInternalUsersByRoleDto,
-	): Promise<ResponseBody<InternalUserCreatedResponse[]>> {
+	): Promise<ResponseBody<InternalUserResponse[]>> {
 		return this.internalUsersService.findByApplicationAndRoles(query);
 	}
 

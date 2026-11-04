@@ -25,10 +25,10 @@ export class AppUserConnectionsRepository {
 		});
 	}
 
-	findAllByAppUserId(appUserId: number): Promise<AppUserConnectionEntity[]> {
+	findAllByAppUserIdOrderedByCreatedAtDesc(appUserId: number): Promise<AppUserConnectionEntity[]> {
 		return this.repository.find({
 			where: { appUserId },
-			order: { id: 'ASC' },
+			order: { createdAt: 'DESC' },
 		});
 	}
 }

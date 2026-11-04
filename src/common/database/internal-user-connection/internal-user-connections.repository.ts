@@ -25,10 +25,12 @@ export class InternalUserConnectionsRepository {
 		});
 	}
 
-	findAllByInternalUserId(internalUserId: number): Promise<InternalUserConnectionEntity[]> {
+	findAllByInternalUserIdOrderedByCreatedAtDesc(
+		internalUserId: number,
+	): Promise<InternalUserConnectionEntity[]> {
 		return this.repository.find({
 			where: { internalUserId },
-			order: { id: 'ASC' },
+			order: { createdAt: 'DESC' },
 		});
 	}
 }

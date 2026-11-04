@@ -10,13 +10,13 @@ import { InternalUsersService } from '../../internal-users.service';
 describe('InternalUsersService.findConnections', () => {
 	let users: { findById: ReturnType<typeof mockFn> };
 	let applications: { findByIds: ReturnType<typeof mockFn> };
-	let connections: { findAllByInternalUserId: ReturnType<typeof mockFn> };
+	let connections: { findAllByInternalUserIdOrderedByCreatedAtDesc: ReturnType<typeof mockFn> };
 	let service: InternalUsersService;
 
 	beforeEach(() => {
 		users = { findById: mockFn() };
 		applications = { findByIds: mockFn() };
-		connections = { findAllByInternalUserId: mockFn() };
+		connections = { findAllByInternalUserIdOrderedByCreatedAtDesc: mockFn() };
 		service = new InternalUsersService(
 			users as unknown as InternalUsersRepository,
 			applications as unknown as ApplicationsRepository,
@@ -34,11 +34,11 @@ describe('InternalUsersService.findConnections', () => {
 		await expect(service.findConnections(1)).rejects.toThrow(
 			new NotFoundException('Internal user not found'),
 		);
-		expect(connections.findAllByInternalUserId).not.toHaveBeenCalled();
+		expect(connections.findAllByInternalUserIdOrderedByCreatedAtDesc).not.toHaveBeenCalled();
 	});
 
 	it('returns the connections with the names of both applications', async () => {
-		connections.findAllByInternalUserId.mockResolvedValue([
+		connections.findAllByInternalUserIdOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				internalUserId: 1,
@@ -78,11 +78,11 @@ describe('InternalUsersService.findConnections', () => {
 				},
 			],
 		});
-		expect(connections.findAllByInternalUserId).toHaveBeenCalledWith(1);
+		expect(connections.findAllByInternalUserIdOrderedByCreatedAtDesc).toHaveBeenCalledWith(1);
 	});
 
 	it('looks every application up once, even when it appears several times', async () => {
-		connections.findAllByInternalUserId.mockResolvedValue([
+		connections.findAllByInternalUserIdOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				internalUserId: 1,
@@ -104,7 +104,7 @@ describe('InternalUsersService.findConnections', () => {
 	});
 
 	it('returns an empty list for a user without connections', async () => {
-		connections.findAllByInternalUserId.mockResolvedValue([]);
+		connections.findAllByInternalUserIdOrderedByCreatedAtDesc.mockResolvedValue([]);
 		applications.findByIds.mockResolvedValue([]);
 
 		await expect(service.findConnections(1)).resolves.toEqual({
@@ -116,7 +116,7 @@ describe('InternalUsersService.findConnections', () => {
 	});
 
 	it('leaves the application name undefined when the application no longer exists (current behavior)', async () => {
-		connections.findAllByInternalUserId.mockResolvedValue([
+		connections.findAllByInternalUserIdOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				internalUserId: 1,
@@ -133,7 +133,7 @@ describe('InternalUsersService.findConnections', () => {
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		connections.findAllByInternalUserId.mockRejectedValue(failure);
+		connections.findAllByInternalUserIdOrderedByCreatedAtDesc.mockRejectedValue(failure);
 
 		await expect(service.findConnections(1)).rejects.toBe(failure);
 	});

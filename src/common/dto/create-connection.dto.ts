@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt } from 'class-validator';
+import { IsInt, IsPositive } from 'class-validator';
 
 /**
  * Body for `POST /apps-users/:id/connections` and
@@ -13,6 +13,7 @@ export class CreateConnectionDto {
 		example: 1,
 	})
 	@IsInt()
+	@IsPositive()
 	originApplicationId: number;
 
 	@ApiProperty({
@@ -20,5 +21,6 @@ export class CreateConnectionDto {
 		example: 2,
 	})
 	@IsInt()
+	@IsPositive()
 	destinationApplicationId: number;
 }

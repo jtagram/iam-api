@@ -10,13 +10,13 @@ import { AppUsersService } from '../../apps-users.service';
 describe('AppUsersService.findConnections', () => {
 	let users: { findById: ReturnType<typeof mockFn> };
 	let applications: { findByIds: ReturnType<typeof mockFn> };
-	let connections: { findAllByAppUserId: ReturnType<typeof mockFn> };
+	let connections: { findAllByAppUserIdOrderedByCreatedAtDesc: ReturnType<typeof mockFn> };
 	let service: AppUsersService;
 
 	beforeEach(() => {
 		users = { findById: mockFn() };
 		applications = { findByIds: mockFn() };
-		connections = { findAllByAppUserId: mockFn() };
+		connections = { findAllByAppUserIdOrderedByCreatedAtDesc: mockFn() };
 		service = new AppUsersService(
 			users as unknown as AppUsersRepository,
 			applications as unknown as ApplicationsRepository,
@@ -34,11 +34,11 @@ describe('AppUsersService.findConnections', () => {
 		await expect(service.findConnections(1)).rejects.toThrow(
 			new NotFoundException('Application user not found'),
 		);
-		expect(connections.findAllByAppUserId).not.toHaveBeenCalled();
+		expect(connections.findAllByAppUserIdOrderedByCreatedAtDesc).not.toHaveBeenCalled();
 	});
 
 	it('returns the connections with the names of both applications', async () => {
-		connections.findAllByAppUserId.mockResolvedValue([
+		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				appUserId: 1,
@@ -78,11 +78,11 @@ describe('AppUsersService.findConnections', () => {
 				},
 			],
 		});
-		expect(connections.findAllByAppUserId).toHaveBeenCalledWith(1);
+		expect(connections.findAllByAppUserIdOrderedByCreatedAtDesc).toHaveBeenCalledWith(1);
 	});
 
 	it('looks every application up once, even when it appears several times', async () => {
-		connections.findAllByAppUserId.mockResolvedValue([
+		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				appUserId: 1,
@@ -104,7 +104,7 @@ describe('AppUsersService.findConnections', () => {
 	});
 
 	it('returns an empty list for a user without connections', async () => {
-		connections.findAllByAppUserId.mockResolvedValue([]);
+		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([]);
 		applications.findByIds.mockResolvedValue([]);
 
 		await expect(service.findConnections(1)).resolves.toEqual({
@@ -116,7 +116,7 @@ describe('AppUsersService.findConnections', () => {
 	});
 
 	it('leaves the application name undefined when the application no longer exists (current behavior)', async () => {
-		connections.findAllByAppUserId.mockResolvedValue([
+		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				appUserId: 1,
@@ -133,7 +133,7 @@ describe('AppUsersService.findConnections', () => {
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		connections.findAllByAppUserId.mockRejectedValue(failure);
+		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockRejectedValue(failure);
 
 		await expect(service.findConnections(1)).rejects.toBe(failure);
 	});

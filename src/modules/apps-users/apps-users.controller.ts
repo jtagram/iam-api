@@ -9,8 +9,6 @@ import {
 	Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { UserAppEntity } from '../../common/database/user-application/user-app.entity';
-import { UserRoleEntity } from '../../common/database/user-role/user-role.entity';
 import { Role } from '../../common/database/role/role.enum';
 import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
@@ -20,6 +18,8 @@ import { ResponseBody } from '../../common/dto/response-body.dto';
 import { Roles } from '../../common/guards/roles.decorator';
 import { CreateAppUserDto } from './dto/create-app-user.dto';
 import { AppUsersService } from './apps-users.service';
+import { AppUserApplicationAssignmentResponse } from './dto/app-user-application-assignment-response.dto';
+import { AppUserRoleAssignmentResponse } from './dto/app-user-role-assignment-response.dto';
 import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
 import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
@@ -66,7 +66,7 @@ export class AppUsersController {
 	assignApplication(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: AssignApplicationDto,
-	): Promise<ResponseBody<UserAppEntity>> {
+	): Promise<ResponseBody<AppUserApplicationAssignmentResponse>> {
 		return this.appUsersService.assignApplication(id, dto);
 	}
 
@@ -76,7 +76,7 @@ export class AppUsersController {
 	assignRole(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: AssignRoleDto,
-	): Promise<ResponseBody<UserRoleEntity>> {
+	): Promise<ResponseBody<AppUserRoleAssignmentResponse>> {
 		return this.appUsersService.assignRole(id, dto);
 	}
 

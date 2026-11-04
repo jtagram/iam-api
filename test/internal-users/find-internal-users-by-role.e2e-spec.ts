@@ -16,7 +16,7 @@ import {
 	expiredAuthorization,
 } from '../helpers/test-auth';
 import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
-import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
+import { InternalUserResponse } from '../../src/modules/internal-users/dto/internal-user-response.dto';
 
 describe('GET /internal-users/by-role (e2e)', () => {
 	let testApp: AppTestApp;
@@ -109,7 +109,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: 'ADMIN,EDITOR',
 			}).expect(200);
 
-			expect(emails(dataOf<InternalUserCreatedResponse[]>(response))).toEqual([
+			expect(emails(dataOf<InternalUserResponse[]>(response))).toEqual([
 				'admin@example.com',
 				'alice@example.com',
 				'bob@example.com',
@@ -122,7 +122,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: ' EDITOR , ,',
 			}).expect(200);
 
-			expect(emails(dataOf<InternalUserCreatedResponse[]>(response))).toEqual([
+			expect(emails(dataOf<InternalUserResponse[]>(response))).toEqual([
 				'alice@example.com',
 				'bob@example.com',
 			]);
@@ -134,9 +134,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: 'ADMIN',
 			}).expect(200);
 
-			expect(emails(dataOf<InternalUserCreatedResponse[]>(response))).toEqual([
-				'carol@example.com',
-			]);
+			expect(emails(dataOf<InternalUserResponse[]>(response))).toEqual(['carol@example.com']);
 		});
 
 		it('returns an empty array when no role matches', async () => {
@@ -175,7 +173,7 @@ describe('GET /internal-users/by-role (e2e)', () => {
 			const response = await send().expect(200);
 
 			expect(JSON.stringify(dataOf<unknown>(response))).not.toContain('$2');
-			expect(Object.keys(dataOf<InternalUserCreatedResponse[]>(response)[0]).sort()).toEqual([
+			expect(Object.keys(dataOf<InternalUserResponse[]>(response)[0]).sort()).toEqual([
 				'email',
 				'id',
 				'lastname',

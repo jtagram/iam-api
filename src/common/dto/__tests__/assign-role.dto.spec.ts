@@ -13,7 +13,22 @@ describe('AssignRoleDto', () => {
 	it('rejects a missing roleId', async () => {
 		const messages = await validationMessages(() => validateBody(AssignRoleDto, {}));
 
-		expect(messages).toEqual(['roleId must be an integer number']);
+		expect(messages).toEqual([
+			'roleId must be a positive number',
+			'roleId must be an integer number',
+		]);
+	});
+
+	it('rejects a zero roleId', async () => {
+		const messages = await validationMessages(() => validateBody(AssignRoleDto, { roleId: 0 }));
+
+		expect(messages).toEqual(['roleId must be a positive number']);
+	});
+
+	it('rejects a negative roleId', async () => {
+		const messages = await validationMessages(() => validateBody(AssignRoleDto, { roleId: -3 }));
+
+		expect(messages).toEqual(['roleId must be a positive number']);
 	});
 
 	it('rejects a decimal roleId', async () => {
@@ -27,7 +42,10 @@ describe('AssignRoleDto', () => {
 			validateBody(AssignRoleDto, { roleId: 'ADMIN' }),
 		);
 
-		expect(messages).toEqual(['roleId must be an integer number']);
+		expect(messages).toEqual([
+			'roleId must be a positive number',
+			'roleId must be an integer number',
+		]);
 	});
 
 	it('strips a caller-supplied applicationId (it is derived from the role)', async () => {

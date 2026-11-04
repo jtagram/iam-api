@@ -115,18 +115,19 @@ describe('InternalUsersRepository (in-memory db)', () => {
 		});
 	});
 
-	describe('findAll', () => {
+	describe('findAllOrderedByCreatedAtDesc', () => {
 		it('returns an empty list when there are no internal users', async () => {
-			await expect(repository.findAll()).resolves.toEqual([]);
+			await expect(repository.findAllOrderedByCreatedAtDesc()).resolves.toEqual([]);
 		});
 
-		it('returns every internal user', async () => {
-			await repository.createInternalUser(buildInternalUser('a@example.com'));
-			await repository.createInternalUser(buildInternalUser('b@example.com'));
+		it('returns every internal user, the most recently created first', async () => {
+			const first = await repository.createInternalUser(buildInternalUser('a@example.com'));
+			const second = await repository.createInternalUser(buildInternalUser('b@example.com'));
+			await typeormRepository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
 
-			const all = await repository.findAll();
+			const all = await repository.findAllOrderedByCreatedAtDesc();
 
-			expect(all.map((user) => user.email).sort()).toEqual(['a@example.com', 'b@example.com']);
+			expect(all.map((user) => user.id)).toEqual([second.id, first.id]);
 		});
 	});
 

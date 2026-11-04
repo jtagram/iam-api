@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-/** Documents the `UserRoleEntity` row returned when assigning a role. */
+/** Returned when a role is assigned to an application user. */
 export class AppUserRoleAssignmentResponse {
 	@ApiProperty({ description: 'Assignment identifier.', example: 1 })
 	id: number;

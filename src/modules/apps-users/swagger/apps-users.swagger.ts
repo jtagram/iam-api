@@ -109,7 +109,7 @@ export const ApiAssignAppUserApplication = () =>
 			description: [
 				'Invalid request:',
 				INVALID_ID_CASE,
-				'- The body is invalid: `applicationId` is missing or not an integer.',
+				'- The body is invalid: `applicationId` is missing or not a positive integer.',
 			].join('\n'),
 		}),
 		ApiNotFoundResponse({
@@ -142,7 +142,7 @@ export const ApiAssignAppUserRole = () =>
 			description: [
 				'Invalid request:',
 				INVALID_ID_CASE,
-				'- The body is invalid: `roleId` is missing or not an integer.',
+				'- The body is invalid: `roleId` is missing or not a positive integer.',
 			].join('\n'),
 		}),
 		ApiNotFoundResponse({
@@ -160,7 +160,7 @@ export const ApiFindAppUserConnections = () =>
 		ApiOperation({
 			summary: 'List the connections of an application user',
 			description:
-				'Returns the origin to destination application connections of the user. Requires the `ADMIN` role in the iam application.',
+				'Returns the origin to destination application connections of the user, most recently created first. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
@@ -196,7 +196,7 @@ export const ApiCreateAppUserConnection = () =>
 			description: [
 				'Invalid request:',
 				INVALID_ID_CASE,
-				'- The body is invalid: `originApplicationId` or `destinationApplicationId` is missing or not an integer.',
+				'- The body is invalid: `originApplicationId` or `destinationApplicationId` is missing or not a positive integer.',
 				'- `Origin and destination applications must be different`',
 				'- `The user does not have this application assigned`: the origin or destination application is not assigned to the user.',
 			].join('\n'),

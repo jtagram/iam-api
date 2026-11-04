@@ -131,8 +131,17 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 			const response = await send(adminAuthorization(), {}).expect(400);
 
 			expect(bodyOf<ErrorBody>(response).msg).toBe(
-				'originApplicationId must be an integer number, destinationApplicationId must be an integer number',
+				'originApplicationId must be a positive number, originApplicationId must be an integer number, destinationApplicationId must be a positive number, destinationApplicationId must be an integer number',
 			);
+		});
+
+		it('returns 400 when an application id is 0', async () => {
+			const response = await send(
+				adminAuthorization(),
+				validBody({ originApplicationId: 0 }),
+			).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('originApplicationId must be a positive number');
 		});
 
 		it('returns 400 when an application id is a numeric string', async () => {

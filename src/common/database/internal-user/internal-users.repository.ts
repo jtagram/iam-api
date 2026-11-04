@@ -23,8 +23,8 @@ export class InternalUsersRepository {
 		return this.repository.findOne({ where: { id } });
 	}
 
-	findAll(): Promise<InternalUserEntity[]> {
-		return this.repository.find();
+	findAllOrderedByCreatedAtDesc(): Promise<InternalUserEntity[]> {
+		return this.repository.find({ order: { createdAt: 'DESC' } });
 	}
 
 	findByIds(ids: number[]): Promise<InternalUserEntity[]> {

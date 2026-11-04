@@ -89,7 +89,9 @@ describe('POST /apps-users/:id/applications (e2e)', () => {
 		it('returns 400 when applicationId is missing', async () => {
 			const response = await send(adminAuthorization(), {}).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).msg).toBe('applicationId must be an integer number');
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
+				'applicationId must be a positive number, applicationId must be an integer number',
+			);
 		});
 
 		it('returns 400 when applicationId is a numeric string', async () => {
@@ -97,7 +99,17 @@ describe('POST /apps-users/:id/applications (e2e)', () => {
 				400,
 			);
 
-			expect(bodyOf<ErrorBody>(response).msg).toBe('applicationId must be an integer number');
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
+				'applicationId must be a positive number, applicationId must be an integer number',
+			);
+		});
+
+		it('returns 400 when applicationId is not positive', async () => {
+			const response = await send(adminAuthorization(), validBody({ applicationId: 0 })).expect(
+				400,
+			);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('applicationId must be a positive number');
 		});
 
 		it('returns 400 when applicationId is a decimal number', async () => {

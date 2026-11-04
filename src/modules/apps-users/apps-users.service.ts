@@ -5,14 +5,11 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { AppUserConnectionEntity } from '../../common/database/app-user-connection/app-user-connection.entity';
 import { AppUserConnectionsRepository } from '../../common/database/app-user-connection/app-user-connections.repository';
 import { AppUsersRepository } from '../../common/database/app-user/app-users.repository';
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
 import { RolesRepository } from '../../common/database/role/roles.repository';
-import { UserAppEntity } from '../../common/database/user-application/user-app.entity';
 import { UserAppsRepository } from '../../common/database/user-application/user-apps.repository';
-import { UserRoleEntity } from '../../common/database/user-role/user-role.entity';
 import { UserRolesRepository } from '../../common/database/user-role/user-roles.repository';
 import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
@@ -21,6 +18,8 @@ import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
 import { ResponseBody } from '../../common/dto/response-body.dto';
 import { CreateAppUserDto } from './dto/create-app-user.dto';
 import { AppUserMapper } from './app-user.mapper';
+import { AppUserApplicationAssignmentResponse } from './dto/app-user-application-assignment-response.dto';
+import { AppUserRoleAssignmentResponse } from './dto/app-user-role-assignment-response.dto';
 import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
 import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
@@ -115,7 +114,7 @@ export class AppUsersService {
 	async assignApplication(
 		userId: number,
 		dto: AssignApplicationDto,
-	): Promise<ResponseBody<UserAppEntity>> {
+	): Promise<ResponseBody<AppUserApplicationAssignmentResponse>> {
 		const appUser = await this.appUsersRepository.findById(userId);
 		if (!appUser) {
 			throw new NotFoundException(APP_USER_NOT_FOUND_MESSAGE);
@@ -134,15 +133,16 @@ export class AppUsersService {
 			throw new ConflictException(APPLICATION_ALREADY_ASSIGNED_MESSAGE);
 		}
 
-		const entity = new UserAppEntity();
-		entity.appUserId = userId;
-		entity.applicationId = dto.applicationId;
+		const entity = AppUserMapper.toApplicationAssignmentEntity(userId, dto.applicationId);
 		const created = await this.userAppsRepository.createAssignment(entity);
 
 		return AppUserMapper.toAssignApplicationResponse(created);
 	}
 
-	async assignRole(userId: number, dto: AssignRoleDto): Promise<ResponseBody<UserRoleEntity>> {
+	async assignRole(
+		userId: number,
+		dto: AssignRoleDto,
+	): Promise<ResponseBody<AppUserRoleAssignmentResponse>> {
 		const appUser = await this.appUsersRepository.findById(userId);
 		if (!appUser) {
 			throw new NotFoundException(APP_USER_NOT_FOUND_MESSAGE);
@@ -161,10 +161,7 @@ export class AppUsersService {
 			throw new ConflictException(ROLE_ALREADY_ASSIGNED_MESSAGE);
 		}
 
-		const entity = new UserRoleEntity();
-		entity.appUserId = userId;
-		entity.roleId = dto.roleId;
-		entity.applicationId = role.applicationId;
+		const entity = AppUserMapper.toRoleAssignmentEntity(userId, dto.roleId, role.applicationId);
 		const created = await this.userRolesRepository.createAssignment(entity);
 
 		return AppUserMapper.toAssignRoleResponse(created);
@@ -176,9 +173,15 @@ export class AppUsersService {
 			throw new NotFoundException(APP_USER_NOT_FOUND_MESSAGE);
 		}
 
-		const connections = await this.appUserConnectionsRepository.findAllByAppUserId(userId);
+		const connections =
+			await this.appUserConnectionsRepository.findAllByAppUserIdOrderedByCreatedAtDesc(userId);
+		const applications = await this.applicationsRepository.findByIds(
+			AppUserMapper.toApplicationIds(connections),
+		);
 
-		return AppUserMapper.toFindConnectionsResponse(await this.toConnectionResponses(connections));
+		return AppUserMapper.toFindConnectionsResponse(
+			AppUserMapper.toConnectionResponses(connections, applications),
+		);
 	}
 
 	async createConnection(
@@ -202,15 +205,10 @@ export class AppUsersService {
 			throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
 		}
 
-		for (const applicationId of [dto.originApplicationId, dto.destinationApplicationId]) {
-			const isAssigned = await this.userAppsRepository.existsForAppUserAndApplication(
-				userId,
-				applicationId,
-			);
-			if (!isAssigned) {
-				throw new BadRequestException(APPLICATION_NOT_ASSIGNED_MESSAGE);
-			}
-		}
+		await this.assertApplicationsAssigned(userId, [
+			dto.originApplicationId,
+			dto.destinationApplicationId,
+		]);
 
 		const alreadyExists = await this.appUserConnectionsRepository.existsForAppUserAndApplications(
 			userId,
@@ -221,38 +219,26 @@ export class AppUsersService {
 			throw new ConflictException(CONNECTION_ALREADY_EXISTS_MESSAGE);
 		}
 
-		const entity = new AppUserConnectionEntity();
-		entity.appUserId = userId;
-		entity.originApplicationId = dto.originApplicationId;
-		entity.destinationApplicationId = dto.destinationApplicationId;
-		const created = await this.appUserConnectionsRepository.createConnection(entity);
-
-		const [response] = await this.toConnectionResponses([created]);
-		return AppUserMapper.toCreateConnectionResponse(response);
-	}
-
-	private async toConnectionResponses(
-		connections: AppUserConnectionEntity[],
-	): Promise<ConnectionResponse[]> {
-		const applicationIds = [
-			...new Set(
-				connections.flatMap((connection) => [
-					connection.originApplicationId,
-					connection.destinationApplicationId,
-				]),
-			),
-		];
-		const applications = await this.applicationsRepository.findByIds(applicationIds);
-		const namesById = new Map(
-			applications.map((application) => [application.id, application.name]),
+		const created = await this.appUserConnectionsRepository.createConnection(
+			AppUserMapper.toConnectionEntity(userId, dto),
 		);
 
-		return connections.map((connection) => ({
-			id: connection.id,
-			originApplicationId: connection.originApplicationId,
-			originApplicationName: namesById.get(connection.originApplicationId)!,
-			destinationApplicationId: connection.destinationApplicationId,
-			destinationApplicationName: namesById.get(connection.destinationApplicationId)!,
-		}));
+		return AppUserMapper.toCreateConnectionResponse(
+			AppUserMapper.toConnectionResponse(created, applications),
+		);
+	}
+
+	private async assertApplicationsAssigned(
+		userId: number,
+		applicationIds: number[],
+	): Promise<void> {
+		const assignments = await Promise.all(
+			applicationIds.map((applicationId) =>
+				this.userAppsRepository.existsForAppUserAndApplication(userId, applicationId),
+			),
+		);
+		if (assignments.some((isAssigned) => !isAssigned)) {
+			throw new BadRequestException(APPLICATION_NOT_ASSIGNED_MESSAGE);
+		}
 	}
 }

@@ -15,6 +15,7 @@ import {
 	expiredAuthorization,
 } from '../helpers/test-auth';
 import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { AppUserConnectionEntity } from '../../src/common/database/app-user-connection/app-user-connection.entity';
 import { ConnectionResponse } from '../../src/common/dto/connection-response.dto';
 
 describe('GET /apps-users/:id/connections (e2e)', () => {
@@ -80,7 +81,7 @@ describe('GET /apps-users/:id/connections (e2e)', () => {
 		});
 	});
 
-	it('returns several connections ordered by id, origin and destination kept apart', async () => {
+	it('returns several connections, the most recently created first, origin and destination kept apart', async () => {
 		const billing = await createApplication(testApp.dataSource, 'billing');
 		const first = await connectAppUser(
 			testApp.dataSource,
@@ -94,23 +95,26 @@ describe('GET /apps-users/:id/connections (e2e)', () => {
 			billing.id,
 			iam.iamApplication.id,
 		);
+		const repository = testApp.dataSource.getRepository(AppUserConnectionEntity);
+		await repository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
+		await repository.update(second.id, { createdAt: new Date('2024-02-01T00:00:00Z') });
 
 		const response = await send().expect(200);
 
 		expect(dataOf<ConnectionResponse[]>(response)).toEqual([
-			{
-				id: first.id,
-				originApplicationId: iam.iamApplication.id,
-				originApplicationName: 'iam',
-				destinationApplicationId: billing.id,
-				destinationApplicationName: 'billing',
-			},
 			{
 				id: second.id,
 				originApplicationId: billing.id,
 				originApplicationName: 'billing',
 				destinationApplicationId: iam.iamApplication.id,
 				destinationApplicationName: 'iam',
+			},
+			{
+				id: first.id,
+				originApplicationId: iam.iamApplication.id,
+				originApplicationName: 'iam',
+				destinationApplicationId: billing.id,
+				destinationApplicationName: 'billing',
 			},
 		]);
 	});

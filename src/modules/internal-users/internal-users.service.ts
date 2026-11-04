@@ -6,11 +6,8 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
-import { InternalUserConnectionEntity } from '../../common/database/internal-user-connection/internal-user-connection.entity';
 import { InternalUserConnectionsRepository } from '../../common/database/internal-user-connection/internal-user-connections.repository';
-import { InternalUserAppEntity } from '../../common/database/internal-user/internal-user-app.entity';
 import { InternalUserAppsRepository } from '../../common/database/internal-user/internal-user-apps.repository';
-import { InternalUserRoleEntity } from '../../common/database/internal-user/internal-user-role.entity';
 import { InternalUserRolesRepository } from '../../common/database/internal-user/internal-user-roles.repository';
 import { InternalUsersRepository } from '../../common/database/internal-user/internal-users.repository';
 import { RolesRepository } from '../../common/database/role/roles.repository';
@@ -22,7 +19,7 @@ import { ResponseBody } from '../../common/dto/response-body.dto';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
 import { InternalUserApplicationAssignmentResponse } from './dto/internal-user-application-assignment-response.dto';
 import { InternalUserRoleAssignmentResponse } from './dto/internal-user-role-assignment-response.dto';
-import { InternalUserCreatedResponse } from './dto/internal-user-created-response.dto';
+import { InternalUserResponse } from './dto/internal-user-response.dto';
 import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
 import { FindInternalUsersByRoleDto } from './dto/find-internal-users-by-role.dto';
 import { InternalUserMapper } from './internal-user.mapper';
@@ -36,6 +33,7 @@ const APPLICATION_ALREADY_ASSIGNED_MESSAGE = 'Application already assigned to th
 const ROLE_ALREADY_ASSIGNED_MESSAGE = 'Role already assigned to this user';
 const SAME_ORIGIN_AND_DESTINATION_MESSAGE = 'Origin and destination applications must be different';
 const APPLICATION_NOT_ASSIGNED_MESSAGE = 'The user does not have this application assigned';
+const INTERNAL_USER_EMAIL_ALREADY_EXISTS_MESSAGE = 'Email already in use';
 const CONNECTION_ALREADY_EXISTS_MESSAGE = 'This connection already exists for the user';
 
 @Injectable()
@@ -49,13 +47,13 @@ export class InternalUsersService {
 		private readonly internalUserConnectionsRepository: InternalUserConnectionsRepository,
 	) {}
 
-	async create(dto: CreateInternalUserDto): Promise<ResponseBody<InternalUserCreatedResponse>> {
+	async create(dto: CreateInternalUserDto): Promise<ResponseBody<InternalUserResponse>> {
 		const existing = await this.internalUsersRepository.findByEmail(dto.email);
 		if (existing) {
-			throw new ConflictException('Email already in use');
+			throw new ConflictException(INTERNAL_USER_EMAIL_ALREADY_EXISTS_MESSAGE);
 		}
 
-		const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+		const hashedPassword = await this.hashPassword(dto.password);
 		const internalUserEntity = InternalUserMapper.toEntity(dto, hashedPassword);
 		const createdInternalUser =
 			await this.internalUsersRepository.createInternalUser(internalUserEntity);
@@ -63,14 +61,18 @@ export class InternalUsersService {
 		return InternalUserMapper.toCreateResponse(createdInternalUser);
 	}
 
-	async findAll(): Promise<ResponseBody<InternalUserCreatedResponse[]>> {
-		const internalUsers = await this.internalUsersRepository.findAll();
+	async findAll(): Promise<ResponseBody<InternalUserResponse[]>> {
+		const internalUsers = await this.internalUsersRepository.findAllOrderedByCreatedAtDesc();
 		return InternalUserMapper.toFindAllResponse(internalUsers);
+	}
+
+	private hashPassword(password: string): Promise<string> {
+		return bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 	}
 
 	async findByApplicationAndRoles(
 		dto: FindInternalUsersByRoleDto,
-	): Promise<ResponseBody<InternalUserCreatedResponse[]>> {
+	): Promise<ResponseBody<InternalUserResponse[]>> {
 		const application = await this.applicationsRepository.findByName(dto.applicationName);
 		if (!application) {
 			throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
@@ -90,7 +92,7 @@ export class InternalUsersService {
 		);
 		const internalUsers = await this.internalUsersRepository.findByIds(internalUserIds);
 
-		return InternalUserMapper.toFindByApplicationAndRolesResponse(internalUsers);
+		return InternalUserMapper.toFindAllResponse(internalUsers);
 	}
 
 	async findAssignedApplications(
@@ -159,9 +161,7 @@ export class InternalUsersService {
 			throw new ConflictException(APPLICATION_ALREADY_ASSIGNED_MESSAGE);
 		}
 
-		const entity = new InternalUserAppEntity();
-		entity.internalUserId = userId;
-		entity.applicationId = dto.applicationId;
+		const entity = InternalUserMapper.toApplicationAssignmentEntity(userId, dto.applicationId);
 		const created = await this.internalUserAppsRepository.createAssignment(entity);
 		return InternalUserMapper.toAssignApplicationResponse(created);
 	}
@@ -188,10 +188,11 @@ export class InternalUsersService {
 			throw new ConflictException(ROLE_ALREADY_ASSIGNED_MESSAGE);
 		}
 
-		const entity = new InternalUserRoleEntity();
-		entity.internalUserId = userId;
-		entity.roleId = dto.roleId;
-		entity.applicationId = role.applicationId;
+		const entity = InternalUserMapper.toRoleAssignmentEntity(
+			userId,
+			dto.roleId,
+			role.applicationId,
+		);
 		const created = await this.internalUserRolesRepository.createAssignment(entity);
 		return InternalUserMapper.toAssignRoleResponse(created);
 	}
@@ -203,9 +204,16 @@ export class InternalUsersService {
 		}
 
 		const connections =
-			await this.internalUserConnectionsRepository.findAllByInternalUserId(userId);
-		const connectionResponses = await this.toConnectionResponses(connections);
-		return InternalUserMapper.toFindConnectionsResponse(connectionResponses);
+			await this.internalUserConnectionsRepository.findAllByInternalUserIdOrderedByCreatedAtDesc(
+				userId,
+			);
+		const applications = await this.applicationsRepository.findByIds(
+			InternalUserMapper.toApplicationIds(connections),
+		);
+
+		return InternalUserMapper.toFindConnectionsResponse(
+			InternalUserMapper.toConnectionResponses(connections, applications),
+		);
 	}
 
 	async createConnection(
@@ -229,15 +237,10 @@ export class InternalUsersService {
 			throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
 		}
 
-		for (const applicationId of [dto.originApplicationId, dto.destinationApplicationId]) {
-			const isAssigned = await this.internalUserAppsRepository.existsForInternalUserAndApplication(
-				userId,
-				applicationId,
-			);
-			if (!isAssigned) {
-				throw new BadRequestException(APPLICATION_NOT_ASSIGNED_MESSAGE);
-			}
-		}
+		await this.assertApplicationsAssigned(userId, [
+			dto.originApplicationId,
+			dto.destinationApplicationId,
+		]);
 
 		const alreadyExists =
 			await this.internalUserConnectionsRepository.existsForInternalUserAndApplications(
@@ -249,38 +252,26 @@ export class InternalUsersService {
 			throw new ConflictException(CONNECTION_ALREADY_EXISTS_MESSAGE);
 		}
 
-		const entity = new InternalUserConnectionEntity();
-		entity.internalUserId = userId;
-		entity.originApplicationId = dto.originApplicationId;
-		entity.destinationApplicationId = dto.destinationApplicationId;
-		const created = await this.internalUserConnectionsRepository.createConnection(entity);
-
-		const [response] = await this.toConnectionResponses([created]);
-		return InternalUserMapper.toCreateConnectionResponse(response);
-	}
-
-	private async toConnectionResponses(
-		connections: InternalUserConnectionEntity[],
-	): Promise<ConnectionResponse[]> {
-		const applicationIds = [
-			...new Set(
-				connections.flatMap((connection) => [
-					connection.originApplicationId,
-					connection.destinationApplicationId,
-				]),
-			),
-		];
-		const applications = await this.applicationsRepository.findByIds(applicationIds);
-		const namesById = new Map(
-			applications.map((application) => [application.id, application.name]),
+		const created = await this.internalUserConnectionsRepository.createConnection(
+			InternalUserMapper.toConnectionEntity(userId, dto),
 		);
 
-		return connections.map((connection) => ({
-			id: connection.id,
-			originApplicationId: connection.originApplicationId,
-			originApplicationName: namesById.get(connection.originApplicationId)!,
-			destinationApplicationId: connection.destinationApplicationId,
-			destinationApplicationName: namesById.get(connection.destinationApplicationId)!,
-		}));
+		return InternalUserMapper.toCreateConnectionResponse(
+			InternalUserMapper.toConnectionResponse(created, applications),
+		);
+	}
+
+	private async assertApplicationsAssigned(
+		userId: number,
+		applicationIds: number[],
+	): Promise<void> {
+		const assignments = await Promise.all(
+			applicationIds.map((applicationId) =>
+				this.internalUserAppsRepository.existsForInternalUserAndApplication(userId, applicationId),
+			),
+		);
+		if (assignments.some((isAssigned) => !isAssigned)) {
+			throw new BadRequestException(APPLICATION_NOT_ASSIGNED_MESSAGE);
+		}
 	}
 }

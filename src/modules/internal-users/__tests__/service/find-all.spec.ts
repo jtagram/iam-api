@@ -4,11 +4,11 @@ import { InternalUsersRepository } from '../../../../common/database/internal-us
 import { InternalUsersService } from '../../internal-users.service';
 
 describe('InternalUsersService.findAll', () => {
-	let repository: { findAll: ReturnType<typeof mockFn> };
+	let repository: { findAllOrderedByCreatedAtDesc: ReturnType<typeof mockFn> };
 	let service: InternalUsersService;
 
 	beforeEach(() => {
-		repository = { findAll: mockFn() };
+		repository = { findAllOrderedByCreatedAtDesc: mockFn() };
 		service = new InternalUsersService(
 			repository as unknown as InternalUsersRepository,
 			{} as never,
@@ -20,7 +20,7 @@ describe('InternalUsersService.findAll', () => {
 	});
 
 	it('maps every user without exposing the password hash', async () => {
-		repository.findAll.mockResolvedValue([
+		repository.findAllOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				name: 'Ada',
@@ -50,8 +50,20 @@ describe('InternalUsersService.findAll', () => {
 		expect(JSON.stringify(result)).not.toContain('HASH');
 	});
 
+	it('keeps the repository order (most recently created first)', async () => {
+		repository.findAllOrderedByCreatedAtDesc.mockResolvedValue([
+			{ id: 2, name: 'Bob', lastname: 'M', email: 'b@example.com', password: 'HASH' },
+			{ id: 1, name: 'Ada', lastname: 'L', email: 'a@example.com', password: 'HASH' },
+		]);
+
+		const result = await service.findAll();
+
+		expect(result.data?.map((user) => user.id)).toEqual([2, 1]);
+		expect(repository.findAllOrderedByCreatedAtDesc).toHaveBeenCalledTimes(1);
+	});
+
 	it('returns an empty list when there are no users', async () => {
-		repository.findAll.mockResolvedValue([]);
+		repository.findAllOrderedByCreatedAtDesc.mockResolvedValue([]);
 
 		await expect(service.findAll()).resolves.toEqual({
 			ok: true,
@@ -62,7 +74,7 @@ describe('InternalUsersService.findAll', () => {
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		repository.findAll.mockRejectedValue(failure);
+		repository.findAllOrderedByCreatedAtDesc.mockRejectedValue(failure);
 
 		await expect(service.findAll()).rejects.toBe(failure);
 	});

@@ -10,7 +10,7 @@ import {
 	expiredAuthorization,
 } from '../helpers/test-auth';
 import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
-import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
+import { InternalUserResponse } from '../../src/modules/internal-users/dto/internal-user-response.dto';
 
 describe('GET /internal-users (e2e)', () => {
 	let testApp: AppTestApp;
@@ -54,23 +54,27 @@ describe('GET /internal-users (e2e)', () => {
 		});
 	});
 
-	it('returns every internal user', async () => {
-		await createInternalUser(testApp.dataSource, { email: 'a@example.com' });
-		await createInternalUser(testApp.dataSource, { email: 'b@example.com' });
+	it('returns every internal user, the most recently created first', async () => {
+		const repository = testApp.dataSource.getRepository(InternalUserEntity);
+		const older = await createInternalUser(testApp.dataSource, { email: 'a@example.com' });
+		const newer = await createInternalUser(testApp.dataSource, { email: 'b@example.com' });
+		await repository.update(iam.adminUser.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
+		await repository.update(older.id, { createdAt: new Date('2024-02-01T00:00:00Z') });
+		await repository.update(newer.id, { createdAt: new Date('2024-03-01T00:00:00Z') });
 
 		const response = await send().expect(200);
 
-		expect(
-			dataOf<InternalUserCreatedResponse[]>(response)
-				.map((u: { email: string }) => u.email)
-				.sort(),
-		).toEqual(['a@example.com', 'admin@example.com', 'b@example.com']);
+		expect(dataOf<InternalUserResponse[]>(response).map((user) => user.email)).toEqual([
+			'b@example.com',
+			'a@example.com',
+			'admin@example.com',
+		]);
 	});
 
 	it('never exposes the stored password hash', async () => {
 		const response = await send().expect(200);
 
-		expect(Object.keys(dataOf<InternalUserCreatedResponse[]>(response)[0]).sort()).toEqual([
+		expect(Object.keys(dataOf<InternalUserResponse[]>(response)[0]).sort()).toEqual([
 			'email',
 			'id',
 			'lastname',

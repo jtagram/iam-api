@@ -1,10 +1,15 @@
+import { AppUserConnectionEntity } from '../../common/database/app-user-connection/app-user-connection.entity';
 import { AppUserEntity } from '../../common/database/app-user/app-user.entity';
+import { ApplicationEntity } from '../../common/database/application/application.entity';
 import { UserAppEntity } from '../../common/database/user-application/user-app.entity';
 import { UserRoleEntity } from '../../common/database/user-role/user-role.entity';
 import { ConnectionResponse } from '../../common/dto/connection-response.dto';
+import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
 import { ResponseBody } from '../../common/dto/response-body.dto';
 import { ResponseLogin } from '../../common/dto/response-login.dto';
 import { CreateAppUserDto } from './dto/create-app-user.dto';
+import { AppUserApplicationAssignmentResponse } from './dto/app-user-application-assignment-response.dto';
+import { AppUserRoleAssignmentResponse } from './dto/app-user-role-assignment-response.dto';
 import { AppUserCreatedResponse } from './dto/app-user-created-response.dto';
 import { AppUserResponse } from './dto/app-user-response.dto';
 import { AppUserApplicationRolesResponse } from './dto/app-user-application-roles-response.dto';
@@ -78,12 +83,111 @@ export class AppUserMapper {
 		return ResponseBody.success(ASSIGNED_APPLICATIONS_RETRIEVED_MESSAGE, assignedApplications);
 	}
 
-	static toAssignApplicationResponse(assignment: UserAppEntity): ResponseBody<UserAppEntity> {
-		return ResponseBody.success(APPLICATION_ASSIGNED_MESSAGE, assignment);
+	static toConnectionEntity(appUserId: number, dto: CreateConnectionDto): AppUserConnectionEntity {
+		return Object.assign(new AppUserConnectionEntity(), {
+			appUserId,
+			originApplicationId: dto.originApplicationId,
+			destinationApplicationId: dto.destinationApplicationId,
+		});
 	}
 
-	static toAssignRoleResponse(assignment: UserRoleEntity): ResponseBody<UserRoleEntity> {
-		return ResponseBody.success(ROLE_ASSIGNED_MESSAGE, assignment);
+	static toApplicationIds(connections: AppUserConnectionEntity[]): number[] {
+		return [
+			...new Set(
+				connections.flatMap((connection) => [
+					connection.originApplicationId,
+					connection.destinationApplicationId,
+				]),
+			),
+		];
+	}
+
+	static toConnectionResponse(
+		connection: AppUserConnectionEntity,
+		applications: ApplicationEntity[],
+	): ConnectionResponse {
+		return AppUserMapper.buildConnectionResponse(
+			connection,
+			AppUserMapper.toNamesById(applications),
+		);
+	}
+
+	static toConnectionResponses(
+		connections: AppUserConnectionEntity[],
+		applications: ApplicationEntity[],
+	): ConnectionResponse[] {
+		const namesById = AppUserMapper.toNamesById(applications);
+		return connections.map((connection) =>
+			AppUserMapper.buildConnectionResponse(connection, namesById),
+		);
+	}
+
+	private static toNamesById(applications: ApplicationEntity[]): Map<number, string> {
+		return new Map(applications.map((application) => [application.id, application.name]));
+	}
+
+	// The foreign keys guarantee both applications exist; a missing name stays
+	// `undefined`, exactly as the service-built response did before.
+	private static buildConnectionResponse(
+		connection: AppUserConnectionEntity,
+		namesById: Map<number, string>,
+	): ConnectionResponse {
+		return {
+			id: connection.id,
+			originApplicationId: connection.originApplicationId,
+			originApplicationName: namesById.get(connection.originApplicationId) as string,
+			destinationApplicationId: connection.destinationApplicationId,
+			destinationApplicationName: namesById.get(connection.destinationApplicationId) as string,
+		};
+	}
+
+	static toApplicationAssignmentEntity(appUserId: number, applicationId: number): UserAppEntity {
+		return Object.assign(new UserAppEntity(), { appUserId, applicationId });
+	}
+
+	static toRoleAssignmentEntity(
+		appUserId: number,
+		roleId: number,
+		applicationId: number,
+	): UserRoleEntity {
+		return Object.assign(new UserRoleEntity(), { appUserId, roleId, applicationId });
+	}
+
+	static toApplicationAssignmentResponse(
+		assignment: UserAppEntity,
+	): AppUserApplicationAssignmentResponse {
+		return {
+			id: assignment.id,
+			appUserId: assignment.appUserId,
+			applicationId: assignment.applicationId,
+		};
+	}
+
+	static toRoleAssignmentResponse(assignment: UserRoleEntity): AppUserRoleAssignmentResponse {
+		return {
+			id: assignment.id,
+			appUserId: assignment.appUserId,
+			applicationId: assignment.applicationId,
+			roleId: assignment.roleId,
+		};
+	}
+
+	static toAssignApplicationResponse(
+		assignment: UserAppEntity,
+	): ResponseBody<AppUserApplicationAssignmentResponse> {
+		return ResponseBody.success(
+			APPLICATION_ASSIGNED_MESSAGE,
+			AppUserMapper.toApplicationAssignmentResponse(assignment),
+		);
+	}
+
+	static toAssignRoleResponse(
+		assignment: UserRoleEntity,
+	): ResponseBody<AppUserRoleAssignmentResponse> {
+		return ResponseBody.success(
+			ROLE_ASSIGNED_MESSAGE,
+			AppUserMapper.toRoleAssignmentResponse(assignment),
+		);
 	}
 
 	static toFindConnectionsResponse(

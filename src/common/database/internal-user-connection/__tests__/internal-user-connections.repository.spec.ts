@@ -90,29 +90,34 @@ describe('InternalUserConnectionsRepository (in-memory db)', () => {
 		});
 	});
 
-	describe('findAllByInternalUserId', () => {
+	describe('findAllByInternalUserIdOrderedByCreatedAtDesc', () => {
 		it('returns only the connections of that user', async () => {
 			await repository.createConnection(build(1, 10, 20));
 			await repository.createConnection(build(2, 10, 21));
 
-			const found = await repository.findAllByInternalUserId(1);
+			const found = await repository.findAllByInternalUserIdOrderedByCreatedAtDesc(1);
 
 			expect(found).toHaveLength(1);
 			expect(found[0].destinationApplicationId).toBe(20);
 		});
 
-		it('returns the connections ordered by id ascending', async () => {
-			const first = await repository.createConnection(build(1, 10, 22));
-			const second = await repository.createConnection(build(1, 10, 20));
-			const third = await repository.createConnection(build(1, 10, 21));
+		it('returns the connections most recently created first', async () => {
+			const oldest = await repository.createConnection(build(1, 10, 22));
+			const newest = await repository.createConnection(build(1, 10, 20));
+			const middle = await repository.createConnection(build(1, 10, 21));
+			await typeormRepository.update(oldest.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
+			await typeormRepository.update(newest.id, { createdAt: new Date('2024-03-01T00:00:00Z') });
+			await typeormRepository.update(middle.id, { createdAt: new Date('2024-02-01T00:00:00Z') });
 
-			const found = await repository.findAllByInternalUserId(1);
+			const found = await repository.findAllByInternalUserIdOrderedByCreatedAtDesc(1);
 
-			expect(found.map((row) => row.id)).toEqual([first.id, second.id, third.id]);
+			expect(found.map((row) => row.id)).toEqual([newest.id, middle.id, oldest.id]);
 		});
 
 		it('returns an empty list for a user without connections', async () => {
-			await expect(repository.findAllByInternalUserId(9)).resolves.toEqual([]);
+			await expect(repository.findAllByInternalUserIdOrderedByCreatedAtDesc(9)).resolves.toEqual(
+				[],
+			);
 		});
 	});
 });

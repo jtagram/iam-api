@@ -37,10 +37,10 @@ describe('CreateInternalUserDto', () => {
 		expect(dto).toBeInstanceOf(CreateInternalUserDto);
 	});
 
-	it('accepts a name and lastname of exactly 15 characters', async () => {
+	it('accepts a name and lastname of exactly 30 characters', async () => {
 		const dto = await validateBody(CreateInternalUserDto, {
-			name: 'x'.repeat(15),
-			lastname: 'y'.repeat(15),
+			name: 'x'.repeat(30),
+			lastname: 'y'.repeat(30),
 			email: 'a@example.com',
 			password: 'x'.repeat(8),
 		});
@@ -58,35 +58,62 @@ describe('CreateInternalUserDto', () => {
 		);
 
 		expect(messages).toEqual([
-			'name must be shorter than or equal to 15 characters',
+			'name must be shorter than or equal to 30 characters',
+			'name should not be empty',
 			'name must be a string',
 		]);
 	});
 
-	it('rejects a name longer than 15 characters', async () => {
+	it('rejects a name longer than 30 characters', async () => {
 		const messages = await validationMessages(() =>
 			validateBody(CreateInternalUserDto, {
-				name: 'x'.repeat(16),
+				name: 'x'.repeat(31),
 				lastname: 'L',
 				email: 'a@example.com',
 				password: 'x'.repeat(8),
 			}),
 		);
 
-		expect(messages).toEqual(['name must be shorter than or equal to 15 characters']);
+		expect(messages).toEqual(['name must be shorter than or equal to 30 characters']);
 	});
 
-	it('rejects a lastname longer than 15 characters', async () => {
+	it('rejects a lastname longer than 30 characters', async () => {
 		const messages = await validationMessages(() =>
 			validateBody(CreateInternalUserDto, {
 				name: 'A',
-				lastname: 'y'.repeat(16),
+				lastname: 'y'.repeat(31),
 				email: 'a@example.com',
 				password: 'x'.repeat(8),
 			}),
 		);
 
-		expect(messages).toEqual(['lastname must be shorter than or equal to 15 characters']);
+		expect(messages).toEqual(['lastname must be shorter than or equal to 30 characters']);
+	});
+
+	it('rejects an empty name', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateInternalUserDto, {
+				name: '',
+				lastname: 'L',
+				email: 'a@example.com',
+				password: 'x'.repeat(8),
+			}),
+		);
+
+		expect(messages).toEqual(['name should not be empty']);
+	});
+
+	it('rejects an empty lastname', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateInternalUserDto, {
+				name: 'A',
+				lastname: '',
+				email: 'a@example.com',
+				password: 'x'.repeat(8),
+			}),
+		);
+
+		expect(messages).toEqual(['lastname should not be empty']);
 	});
 
 	it('rejects a missing lastname', async () => {
@@ -99,7 +126,8 @@ describe('CreateInternalUserDto', () => {
 		);
 
 		expect(messages).toEqual([
-			'lastname must be shorter than or equal to 15 characters',
+			'lastname must be shorter than or equal to 30 characters',
+			'lastname should not be empty',
 			'lastname must be a string',
 		]);
 	});
@@ -129,6 +157,8 @@ describe('CreateInternalUserDto', () => {
 		expect(messages).toEqual([
 			'email must be shorter than or equal to 30 characters',
 			'email must be an email',
+			'email should not be empty',
+			'email must be a string',
 		]);
 	});
 
@@ -183,6 +213,7 @@ describe('CreateInternalUserDto', () => {
 		expect(messages).toEqual([
 			'password must be shorter than or equal to 72 characters',
 			'password must be longer than or equal to 8 characters',
+			'password should not be empty',
 			'password must be a string',
 		]);
 	});

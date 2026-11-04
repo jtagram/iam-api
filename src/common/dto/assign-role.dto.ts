@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt } from 'class-validator';
+import { IsInt, IsPositive } from 'class-validator';
 
 /**
  * Body for `POST /apps-users/:id/roles` and `POST /internal-users/:id/roles`.
@@ -22,5 +22,6 @@ export class AssignRoleDto {
 		example: 3,
 	})
 	@IsInt()
+	@IsPositive()
 	roleId: number;
 }

@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
  * One allowed `origin -> destination` application pair for an internal user.
@@ -18,4 +18,7 @@ export class InternalUserConnectionEntity {
 
 	@Column({ name: 'destination_application_id', type: 'int' })
 	destinationApplicationId!: number;
+
+	@CreateDateColumn({ name: 'created_at' })
+	createdAt!: Date;
 }

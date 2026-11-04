@@ -13,7 +13,7 @@ import {
 	expiredAuthorization,
 } from '../helpers/test-auth';
 import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
-import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
+import { InternalUserResponse } from '../../src/modules/internal-users/dto/internal-user-response.dto';
 import { prototypeMethod } from '../helpers/mocks';
 
 describe('POST /internal-users (e2e)', () => {
@@ -75,7 +75,7 @@ describe('POST /internal-users (e2e)', () => {
 
 			const row = await testApp.dataSource
 				.getRepository(InternalUserEntity)
-				.findOneByOrFail({ id: dataOf<InternalUserCreatedResponse>(response).id });
+				.findOneByOrFail({ id: dataOf<InternalUserResponse>(response).id });
 			expect(row.email).toBe('jane.doe@example.com');
 			expect(row.name).toBe('Jane');
 			expect(row.lastname).toBe('Doe');
@@ -91,16 +91,16 @@ describe('POST /internal-users (e2e)', () => {
 				validBody({ id: 999, role: 'ADMIN' }),
 			).expect(201);
 
-			expect(dataOf<InternalUserCreatedResponse>(response).id).not.toBe(999);
+			expect(dataOf<InternalUserResponse>(response).id).not.toBe(999);
 			expect(dataOf<object>(response)).not.toHaveProperty('role');
 		});
 
-		it('accepts boundary lengths (15/15/30 characters, password of 8 and 72 characters)', async () => {
+		it('accepts boundary lengths (30/30/30 characters, password of 8 and 72 characters)', async () => {
 			await send(
 				adminAuthorization(),
 				validBody({
-					name: 'n'.repeat(15),
-					lastname: 'l'.repeat(15),
+					name: 'n'.repeat(30),
+					lastname: 'l'.repeat(30),
 					email: `${'e'.repeat(18)}@example.com`,
 					password: 'p'.repeat(8),
 				}),
@@ -163,18 +163,28 @@ describe('POST /internal-users (e2e)', () => {
 			);
 		});
 
-		it('returns 400 when the name or lastname is longer than 15 characters', async () => {
+		it('returns 400 when the name or lastname is longer than 30 characters', async () => {
 			const response = await send(
 				adminAuthorization(),
-				validBody({ name: 'n'.repeat(16), lastname: 'l'.repeat(16) }),
+				validBody({ name: 'n'.repeat(31), lastname: 'l'.repeat(31) }),
 			).expect(400);
 
 			expect(bodyOf<ErrorBody>(response).msg).toContain(
-				'name must be shorter than or equal to 15 characters',
+				'name must be shorter than or equal to 30 characters',
 			);
 			expect(bodyOf<ErrorBody>(response).msg).toContain(
-				'lastname must be shorter than or equal to 15 characters',
+				'lastname must be shorter than or equal to 30 characters',
 			);
+		});
+
+		it('returns 400 when the name or lastname is empty', async () => {
+			const response = await send(
+				adminAuthorization(),
+				validBody({ name: '', lastname: '' }),
+			).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toContain('name should not be empty');
+			expect(bodyOf<ErrorBody>(response).msg).toContain('lastname should not be empty');
 		});
 
 		it('does not persist anything when validation fails', async () => {

@@ -6,6 +6,7 @@ import {
 	SeededIam,
 	seedIamAdmin,
 } from '../helpers/seed';
+import { InternalUserConnectionEntity } from '../../src/common/database/internal-user-connection/internal-user-connection.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import {
 	adminAuthorization,
@@ -83,7 +84,7 @@ describe('GET /internal-users/:id/connections (e2e)', () => {
 		});
 	});
 
-	it('returns several connections ordered by id, origin and destination kept apart', async () => {
+	it('returns several connections, the most recently created first, origin and destination kept apart', async () => {
 		const billing = await createApplication(testApp.dataSource, 'billing');
 		const first = await connectInternalUser(
 			testApp.dataSource,
@@ -97,6 +98,9 @@ describe('GET /internal-users/:id/connections (e2e)', () => {
 			billing.id,
 			iam.iamApplication.id,
 		);
+		const repository = testApp.dataSource.getRepository(InternalUserConnectionEntity);
+		await repository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
+		await repository.update(second.id, { createdAt: new Date('2024-02-01T00:00:00Z') });
 
 		const response = await send().expect(200);
 
@@ -105,18 +109,18 @@ describe('GET /internal-users/:id/connections (e2e)', () => {
 			msg: 'Connections retrieved successfully',
 			data: [
 				{
-					id: first.id,
-					originApplicationId: iam.iamApplication.id,
-					originApplicationName: 'iam',
-					destinationApplicationId: billing.id,
-					destinationApplicationName: 'billing',
-				},
-				{
 					id: second.id,
 					originApplicationId: billing.id,
 					originApplicationName: 'billing',
 					destinationApplicationId: iam.iamApplication.id,
 					destinationApplicationName: 'iam',
+				},
+				{
+					id: first.id,
+					originApplicationId: iam.iamApplication.id,
+					originApplicationName: 'iam',
+					destinationApplicationId: billing.id,
+					destinationApplicationName: 'billing',
 				},
 			],
 		});

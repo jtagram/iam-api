@@ -16,7 +16,7 @@ import { verifyWithPublishedKey } from '../helpers/jwks';
 import { InternalUserEntity } from '../../src/common/database/internal-user/internal-user.entity';
 import { adminAuthorization } from '../helpers/test-auth';
 import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
-import { InternalUserCreatedResponse } from '../../src/modules/internal-users/dto/internal-user-created-response.dto';
+import { InternalUserResponse } from '../../src/modules/internal-users/dto/internal-user-response.dto';
 import { ResponseBody } from '../../src/common/dto/response-body.dto';
 import { ResponseLogin } from '../../src/common/dto/response-login.dto';
 
@@ -250,23 +250,23 @@ describe('POST /internal-users/login (e2e)', () => {
 				.expect(201);
 			await grantInternalUserApplication(
 				testApp.dataSource,
-				dataOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserResponse>(created).id,
 				iam.iamApplication.id,
 			);
 			await grantInternalUserApplication(
 				testApp.dataSource,
-				dataOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserResponse>(created).id,
 				billingId,
 			);
 			await connectInternalUser(
 				testApp.dataSource,
-				dataOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserResponse>(created).id,
 				iam.iamApplication.id,
 				billingId,
 			);
 			await grantInternalUserRole(
 				testApp.dataSource,
-				dataOf<InternalUserCreatedResponse>(created).id,
+				dataOf<InternalUserResponse>(created).id,
 				payer,
 			);
 

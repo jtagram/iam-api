@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt } from 'class-validator';
+import { IsInt, IsPositive } from 'class-validator';
 
 /**
  * Body for `POST /apps-users/:id/applications` and
@@ -17,5 +17,6 @@ export class AssignApplicationDto {
 		example: 1,
 	})
 	@IsInt()
+	@IsPositive()
 	applicationId: number;
 }
