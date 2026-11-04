@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 import { createApplication, createRole, SeededIam, seedIamAdmin } from '../helpers/seed';
+import { ApplicationEntity } from '../../src/common/database/application/application.entity';
+import { RoleEntity } from '../../src/common/database/role/role.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import {
 	adminAuthorization,
@@ -35,6 +37,18 @@ describe('GET /roles/grouped-by-application (e2e)', () => {
 		return req;
 	}
 
+	/** Gives each entity a distinct, increasing creation date so the ordering never depends on the clock. */
+	async function setCreationOrder(
+		target: typeof ApplicationEntity | typeof RoleEntity,
+		ids: number[],
+	) {
+		for (const [index, id] of ids.entries()) {
+			await testApp.dataSource
+				.getRepository<ApplicationEntity | RoleEntity>(target)
+				.update(id, { createdAt: new Date(Date.UTC(2024, 0, 1 + index)) });
+		}
+	}
+
 	it('returns 200 with every application and its roles in the {ok, msg, data} envelope', async () => {
 		const response = await send().expect(200);
 
@@ -56,15 +70,16 @@ describe('GET /roles/grouped-by-application (e2e)', () => {
 		const billing = await createApplication(testApp.dataSource, 'billing');
 		const payer = await createRole(testApp.dataSource, billing.id, 'PAYER');
 		const reports = await createApplication(testApp.dataSource, 'reports');
+		await setCreationOrder(ApplicationEntity, [iam.iamApplication.id, billing.id, reports.id]);
 
 		const response = await send().expect(200);
 
 		expect(dataOf<ApplicationRolesResponse[]>(response)).toEqual([
 			{
-				applicationId: iam.iamApplication.id,
-				applicationName: 'iam',
-				applicationDescription: 'Identity and access management',
-				roles: [{ id: iam.adminRole.id, name: 'ADMIN', description: 'Administrator' }],
+				applicationId: reports.id,
+				applicationName: 'reports',
+				applicationDescription: 'reports description',
+				roles: [],
 			},
 			{
 				applicationId: billing.id,
@@ -73,28 +88,30 @@ describe('GET /roles/grouped-by-application (e2e)', () => {
 				roles: [{ id: payer.id, name: 'PAYER', description: 'PAYER description' }],
 			},
 			{
-				applicationId: reports.id,
-				applicationName: 'reports',
-				applicationDescription: 'reports description',
-				roles: [],
+				applicationId: iam.iamApplication.id,
+				applicationName: 'iam',
+				applicationDescription: 'Identity and access management',
+				roles: [{ id: iam.adminRole.id, name: 'ADMIN', description: 'Administrator' }],
 			},
 		]);
 	});
 
-	it('orders applications by id and the roles of each application by id', async () => {
+	it('orders applications and the roles of each application by creation date, most recent first', async () => {
 		const billing = await createApplication(testApp.dataSource, 'billing');
 		const zeta = await createRole(testApp.dataSource, billing.id, 'ZETA');
 		const alpha = await createRole(testApp.dataSource, billing.id, 'ALPHA');
 		const editor = await createRole(testApp.dataSource, iam.iamApplication.id, 'EDITOR');
+		await setCreationOrder(ApplicationEntity, [iam.iamApplication.id, billing.id]);
+		await setCreationOrder(RoleEntity, [iam.adminRole.id, editor.id, zeta.id, alpha.id]);
 
 		const data = dataOf<ApplicationRolesResponse[]>(await send().expect(200));
 
 		expect(data.map((application) => application.applicationId)).toEqual([
-			iam.iamApplication.id,
 			billing.id,
+			iam.iamApplication.id,
 		]);
-		expect(data[0].roles.map((role) => role.id)).toEqual([iam.adminRole.id, editor.id]);
-		expect(data[1].roles.map((role) => role.id)).toEqual([zeta.id, alpha.id]);
+		expect(data[0].roles.map((role) => role.id)).toEqual([alpha.id, zeta.id]);
+		expect(data[1].roles.map((role) => role.id)).toEqual([editor.id, iam.adminRole.id]);
 	});
 
 	it('returns an empty list when there are no applications', async () => {

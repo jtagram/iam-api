@@ -95,6 +95,7 @@ describe('ApplicationsRepository (in-memory db)', () => {
 		it('returns every application, the most recently created first', async () => {
 			const first = await repository.createApplication(buildApplication('a'));
 			const second = await repository.createApplication(buildApplication('b'));
+			await typeormRepository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
 
 			const all = await repository.findAllOrderedByCreatedAtDesc();
 

@@ -18,10 +18,10 @@ describe('CreateRoleDto', () => {
 		});
 	});
 
-	it('accepts a name of exactly 20 characters', async () => {
+	it('accepts a name of exactly 30 characters', async () => {
 		const dto = await validateBody(CreateRoleDto, {
 			applicationId: 1,
-			name: 'x'.repeat(20),
+			name: 'x'.repeat(30),
 			description: 'd',
 		});
 
@@ -33,7 +33,10 @@ describe('CreateRoleDto', () => {
 			validateBody(CreateRoleDto, { name: 'ADMIN', description: 'd' }),
 		);
 
-		expect(messages).toEqual(['applicationId must be an integer number']);
+		expect(messages).toEqual([
+			'applicationId must be a positive number',
+			'applicationId must be an integer number',
+		]);
 	});
 
 	it('rejects a decimal applicationId', async () => {
@@ -57,7 +60,10 @@ describe('CreateRoleDto', () => {
 			}),
 		);
 
-		expect(messages).toEqual(['applicationId must be an integer number']);
+		expect(messages).toEqual([
+			'applicationId must be a positive number',
+			'applicationId must be an integer number',
+		]);
 	});
 
 	it('rejects a missing name', async () => {
@@ -66,21 +72,46 @@ describe('CreateRoleDto', () => {
 		);
 
 		expect(messages).toEqual([
-			'name must be shorter than or equal to 20 characters',
+			'name must be shorter than or equal to 30 characters',
+			'name should not be empty',
 			'name must be a string',
 		]);
 	});
 
-	it('rejects a name longer than 20 characters', async () => {
+	it('rejects a non-positive applicationId', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateRoleDto, { applicationId: 0, name: 'ADMIN', description: 'd' }),
+		);
+
+		expect(messages).toEqual(['applicationId must be a positive number']);
+	});
+
+	it('rejects an empty name', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateRoleDto, { applicationId: 1, name: '', description: 'd' }),
+		);
+
+		expect(messages).toEqual(['name should not be empty']);
+	});
+
+	it('rejects an empty description', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateRoleDto, { applicationId: 1, name: 'ADMIN', description: '' }),
+		);
+
+		expect(messages).toEqual(['description should not be empty']);
+	});
+
+	it('rejects a name longer than 30 characters', async () => {
 		const messages = await validationMessages(() =>
 			validateBody(CreateRoleDto, {
 				applicationId: 1,
-				name: 'x'.repeat(21),
+				name: 'x'.repeat(31),
 				description: 'd',
 			}),
 		);
 
-		expect(messages).toEqual(['name must be shorter than or equal to 20 characters']);
+		expect(messages).toEqual(['name must be shorter than or equal to 30 characters']);
 	});
 
 	it('rejects a description longer than 200 characters', async () => {
@@ -102,6 +133,7 @@ describe('CreateRoleDto', () => {
 
 		expect(messages).toEqual([
 			'description must be shorter than or equal to 200 characters',
+			'description should not be empty',
 			'description must be a string',
 		]);
 	});

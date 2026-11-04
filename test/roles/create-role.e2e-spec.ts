@@ -92,8 +92,8 @@ describe('POST /roles (e2e)', () => {
 			expect(await roleCount()).toBe(2);
 		});
 
-		it('accepts a name of exactly 20 characters', async () => {
-			await send(adminAuthorization(), validBody({ name: 'R'.repeat(20) })).expect(201);
+		it('accepts a name of exactly 30 characters', async () => {
+			await send(adminAuthorization(), validBody({ name: 'R'.repeat(30) })).expect(201);
 		});
 
 		it('ignores unknown properties (whitelist)', async () => {
@@ -123,20 +123,42 @@ describe('POST /roles (e2e)', () => {
 				validBody({ applicationId: String(iam.iamApplication.id) }),
 			).expect(400);
 
-			expect(bodyOf<ErrorBody>(response).msg).toBe('applicationId must be an integer number');
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
+				'applicationId must be a positive number, applicationId must be an integer number',
+			);
 		});
 
 		it('returns 400 when applicationId is not an integer', async () => {
 			await send(adminAuthorization(), validBody({ applicationId: 1.5 })).expect(400);
 		});
 
-		it('returns 400 when the name is longer than 20 characters', async () => {
-			const response = await send(adminAuthorization(), validBody({ name: 'R'.repeat(21) })).expect(
+		it('returns 400 when applicationId is not positive', async () => {
+			const response = await send(adminAuthorization(), validBody({ applicationId: 0 })).expect(
+				400,
+			);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('applicationId must be a positive number');
+		});
+
+		it('returns 400 when the name is empty', async () => {
+			const response = await send(adminAuthorization(), validBody({ name: '' })).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('name should not be empty');
+		});
+
+		it('returns 400 when the description is empty', async () => {
+			const response = await send(adminAuthorization(), validBody({ description: '' })).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('description should not be empty');
+		});
+
+		it('returns 400 when the name is longer than 30 characters', async () => {
+			const response = await send(adminAuthorization(), validBody({ name: 'R'.repeat(31) })).expect(
 				400,
 			);
 
 			expect(bodyOf<ErrorBody>(response).msg).toBe(
-				'name must be shorter than or equal to 20 characters',
+				'name must be shorter than or equal to 30 characters',
 			);
 		});
 
@@ -152,7 +174,7 @@ describe('POST /roles (e2e)', () => {
 		});
 
 		it('does not persist anything when validation fails', async () => {
-			await send(adminAuthorization(), validBody({ name: 'R'.repeat(21) })).expect(400);
+			await send(adminAuthorization(), validBody({ name: 'R'.repeat(31) })).expect(400);
 
 			expect(await roleCount()).toBe(1);
 		});

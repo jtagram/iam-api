@@ -20,7 +20,7 @@ export class RolesRepository {
 	}
 
 	findAllByApplicationId(applicationId: number): Promise<RoleEntity[]> {
-		return this.repository.find({ where: { applicationId } });
+		return this.repository.find({ where: { applicationId }, order: { createdAt: 'DESC' } });
 	}
 
 	findAllOrderedByCreatedAtDesc(): Promise<RoleEntity[]> {

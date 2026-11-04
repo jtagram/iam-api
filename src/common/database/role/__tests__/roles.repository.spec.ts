@@ -103,6 +103,16 @@ describe('RolesRepository (in-memory db)', () => {
 			expect(roles.map((role) => role.name).sort()).toEqual(['ADMIN', 'VIEWER']);
 		});
 
+		it('returns the roles most recently created first', async () => {
+			const first = await repository.createRole(buildRole(1, 'ADMIN'));
+			const second = await repository.createRole(buildRole(1, 'VIEWER'));
+			await typeormRepository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
+
+			const roles = await repository.findAllByApplicationId(1);
+
+			expect(roles.map((role) => role.id)).toEqual([second.id, first.id]);
+		});
+
 		it('returns an empty list for an application without roles', async () => {
 			await expect(repository.findAllByApplicationId(5)).resolves.toEqual([]);
 		});
@@ -112,6 +122,7 @@ describe('RolesRepository (in-memory db)', () => {
 		it('returns every role, the most recently created first', async () => {
 			const first = await repository.createRole(buildRole(2, 'B'));
 			const second = await repository.createRole(buildRole(1, 'A'));
+			await typeormRepository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
 
 			const roles = await repository.findAllOrderedByCreatedAtDesc();
 

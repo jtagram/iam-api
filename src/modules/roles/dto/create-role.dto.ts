@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsString, MaxLength } from 'class-validator';
+import { IsInt, IsNotEmpty, IsPositive, IsString, MaxLength } from 'class-validator';
 
 export class CreateRoleDto {
 	@ApiProperty({
@@ -7,15 +7,17 @@ export class CreateRoleDto {
 		example: 1,
 	})
 	@IsInt()
+	@IsPositive()
 	applicationId: number;
 
 	@ApiProperty({
 		description: 'Role name, unique within the application.',
 		example: 'ADMIN',
-		maxLength: 20,
+		maxLength: 30,
 	})
 	@IsString()
-	@MaxLength(20)
+	@IsNotEmpty()
+	@MaxLength(30)
 	name: string;
 
 	@ApiProperty({
@@ -24,6 +26,7 @@ export class CreateRoleDto {
 		maxLength: 200,
 	})
 	@IsString()
+	@IsNotEmpty()
 	@MaxLength(200)
 	description: string;
 }

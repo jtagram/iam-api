@@ -13,7 +13,7 @@ export class RoleResponse {
 	@ApiProperty({
 		description: 'Role name.',
 		example: 'ADMIN',
-		maxLength: 20,
+		maxLength: 30,
 	})
 	name: string;
 

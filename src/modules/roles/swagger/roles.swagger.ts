@@ -28,7 +28,7 @@ export const ApiCreateRole = () =>
 		}),
 		ApiBadRequestResponse({
 			description:
-				'Invalid body: `applicationId` is not an integer, or `name` (max 20 characters) / `description` (max 200 characters) is missing, not a string or too long.',
+				'Invalid body: `applicationId` is not a positive integer, or `name` (max 30 characters) / `description` (max 200 characters) is missing, not a string, empty or too long.',
 		}),
 		ApiNotFoundResponse({
 			description: '`Application not found`: the `applicationId` does not exist.',
@@ -60,7 +60,7 @@ export const ApiFindRoles = () =>
 		ApiOperation({
 			summary: 'List the roles of an application',
 			description:
-				'Returns every role of the application given in the `applicationId` query parameter. Requires the `ADMIN` role in the iam application.',
+				'Returns every role of the application given in the `applicationId` query parameter, most recently created first. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiProtected(),
 		ApiOkResponseBody({
