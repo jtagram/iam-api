@@ -21,7 +21,7 @@ export const ApiCreateApplication = () =>
 		}),
 		ApiBadRequestResponse({
 			description:
-				'Invalid body: `name` (max 30 characters) or `description` (max 200 characters) is missing, not a string or too long.',
+				'Invalid body: `name` (max 30 characters) or `description` (max 200 characters) is missing, not a string, empty or too long.',
 		}),
 		ApiConflictResponse({
 			description: '`An application with this name already exists`: the `name` is already taken.',
@@ -33,7 +33,7 @@ export const ApiFindAllApplications = () =>
 		ApiOperation({
 			summary: 'List applications',
 			description:
-				'Returns every registered application. Requires the `ADMIN` role in the iam application.',
+				'Returns every registered application, most recently created first. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiProtected(),
 		ApiOkResponseBody({
