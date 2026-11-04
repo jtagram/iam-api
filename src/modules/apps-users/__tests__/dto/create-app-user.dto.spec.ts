@@ -13,22 +13,29 @@ describe('CreateAppUserDto', () => {
 		expect(dto).toEqual({ name: 'Billing', description: 'Billing service' });
 	});
 
-	it('accepts a name of exactly 20 characters', async () => {
+	it('accepts a name of exactly 30 characters', async () => {
 		const dto = await validateBody(CreateAppUserDto, {
-			name: 'x'.repeat(20),
+			name: 'x'.repeat(30),
 			description: 'd',
 		});
 
 		expect(dto).toBeInstanceOf(CreateAppUserDto);
 	});
 
-	it('accepts an empty name (current behavior, no IsNotEmpty)', async () => {
-		const dto = await validateBody(CreateAppUserDto, {
-			name: '',
-			description: 'd',
-		});
+	it('rejects an empty name', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateAppUserDto, { name: '', description: 'd' }),
+		);
 
-		expect(dto).toBeInstanceOf(CreateAppUserDto);
+		expect(messages).toEqual(['name should not be empty']);
+	});
+
+	it('rejects an empty description', async () => {
+		const messages = await validationMessages(() =>
+			validateBody(CreateAppUserDto, { name: 'n', description: '' }),
+		);
+
+		expect(messages).toEqual(['description should not be empty']);
 	});
 
 	it('rejects a missing name', async () => {
@@ -37,20 +44,21 @@ describe('CreateAppUserDto', () => {
 		);
 
 		expect(messages).toEqual([
-			'name must be shorter than or equal to 20 characters',
+			'name must be shorter than or equal to 30 characters',
+			'name should not be empty',
 			'name must be a string',
 		]);
 	});
 
-	it('rejects a name longer than 20 characters', async () => {
+	it('rejects a name longer than 30 characters', async () => {
 		const messages = await validationMessages(() =>
 			validateBody(CreateAppUserDto, {
-				name: 'x'.repeat(21),
+				name: 'x'.repeat(31),
 				description: 'd',
 			}),
 		);
 
-		expect(messages).toEqual(['name must be shorter than or equal to 20 characters']);
+		expect(messages).toEqual(['name must be shorter than or equal to 30 characters']);
 	});
 
 	it('rejects a missing description', async () => {
@@ -58,6 +66,7 @@ describe('CreateAppUserDto', () => {
 
 		expect(messages).toEqual([
 			'description must be shorter than or equal to 200 characters',
+			'description should not be empty',
 			'description must be a string',
 		]);
 	});

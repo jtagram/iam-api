@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 import { createAppUser, seedIamAdmin } from '../helpers/seed';
+import { AppUserEntity } from '../../src/common/database/app-user/app-user.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import {
 	adminAuthorization,
@@ -58,17 +59,19 @@ describe('GET /apps-users (e2e)', () => {
 		});
 	});
 
-	it('returns every application user', async () => {
-		await createAppUser(testApp.dataSource, { clienteId: 'client-a' });
+	it('returns every application user, the most recently created first', async () => {
+		const older = await createAppUser(testApp.dataSource, { clienteId: 'client-a' });
 		await createAppUser(testApp.dataSource, { clienteId: 'client-b' });
+		await testApp.dataSource
+			.getRepository(AppUserEntity)
+			.update(older.entity.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
 
 		const response = await send().expect(200);
 
-		expect(
-			dataOf<AppUserResponse[]>(response)
-				.map((u: { clienteId: string }) => u.clienteId)
-				.sort(),
-		).toEqual(['client-a', 'client-b']);
+		expect(dataOf<AppUserResponse[]>(response).map((u) => u.clienteId)).toEqual([
+			'client-b',
+			'client-a',
+		]);
 	});
 
 	it('never exposes the stored secret hash', async () => {

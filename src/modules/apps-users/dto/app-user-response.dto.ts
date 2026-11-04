@@ -13,7 +13,7 @@ export class AppUserResponse {
 	@ApiProperty({
 		description: 'Application user name.',
 		example: 'ticket-worker',
-		maxLength: 20,
+		maxLength: 30,
 	})
 	name: string;
 

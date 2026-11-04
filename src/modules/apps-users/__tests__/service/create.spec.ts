@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { mockFn, prototypeMethod } from '../../../../../test/helpers/mocks';
 import { AppUserEntity } from '../../../../common/database/app-user/app-user.entity';
@@ -9,11 +10,14 @@ import { CredentialGenerator } from '../../credential-generator';
 const dto = { name: 'Billing', description: 'Billing service' };
 
 describe('AppUsersService.create', () => {
-	let repository: { createAppUser: ReturnType<typeof mockFn> };
+	let repository: {
+		findByName: ReturnType<typeof mockFn>;
+		createAppUser: ReturnType<typeof mockFn>;
+	};
 	let service: AppUsersService;
 
 	beforeEach(() => {
-		repository = { createAppUser: mockFn() };
+		repository = { findByName: mockFn(), createAppUser: mockFn() };
 		service = new AppUsersService(
 			repository as unknown as AppUsersRepository,
 			{} as never,
@@ -24,6 +28,7 @@ describe('AppUsersService.create', () => {
 		);
 		jest.spyOn(CredentialGenerator, 'generateClienteId').mockReturnValue('cid-123456789012');
 		jest.spyOn(CredentialGenerator, 'generateClienteSecret').mockReturnValue('plain-secret');
+		repository.findByName.mockResolvedValue(null);
 		repository.createAppUser.mockImplementation((entity: AppUserEntity) =>
 			Promise.resolve(Object.assign(entity, { id: 3 })),
 		);
@@ -31,6 +36,28 @@ describe('AppUsersService.create', () => {
 
 	afterEach(() => {
 		jest.restoreAllMocks();
+	});
+
+	it('looks the name up before creating', async () => {
+		await service.create(dto);
+
+		expect(repository.findByName).toHaveBeenCalledWith('Billing');
+	});
+
+	it('throws Conflict when an application user with that name exists', async () => {
+		repository.findByName.mockResolvedValue({ id: 1, name: 'Billing' });
+
+		await expect(service.create(dto)).rejects.toThrow(
+			new ConflictException('An application user with this name already exists'),
+		);
+	});
+
+	it('does not create anything when the name is taken', async () => {
+		repository.findByName.mockResolvedValue({ id: 1, name: 'Billing' });
+
+		await expect(service.create(dto)).rejects.toThrow(ConflictException);
+
+		expect(repository.createAppUser).not.toHaveBeenCalled();
 	});
 
 	it('persists an entity with the generated clienteId and the dto fields', async () => {
@@ -66,6 +93,16 @@ describe('AppUsersService.create', () => {
 				description: 'Billing service',
 			},
 		});
+	});
+
+	it('salts every hash so the same secret hashes differently', async () => {
+		await service.create(dto);
+		await service.create(dto);
+
+		const [first, second] = repository.createAppUser.mock.calls.map(
+			(call) => (call[0] as AppUserEntity).clienteSecret,
+		);
+		expect(first).not.toBe(second);
 	});
 
 	it('does not return the stored hash', async () => {

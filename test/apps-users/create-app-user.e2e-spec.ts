@@ -93,8 +93,8 @@ describe('POST /apps-users (e2e)', () => {
 		});
 
 		it('generates different credentials for every user', async () => {
-			const first = await send().expect(201);
-			const second = await send().expect(201);
+			const first = await send(adminAuthorization(), validBody({ name: 'First' })).expect(201);
+			const second = await send(adminAuthorization(), validBody({ name: 'Second' })).expect(201);
 
 			expect(dataOf<AppUserCreatedResponse>(second).clienteId).not.toBe(
 				dataOf<AppUserCreatedResponse>(first).clienteId,
@@ -120,8 +120,8 @@ describe('POST /apps-users (e2e)', () => {
 			expect(dataOf<AppUserCreatedResponse>(response).id).not.toBe(999);
 		});
 
-		it('accepts a name of exactly 20 characters', async () => {
-			await send(adminAuthorization(), validBody({ name: 'n'.repeat(20) })).expect(201);
+		it('accepts a name of exactly 30 characters', async () => {
+			await send(adminAuthorization(), validBody({ name: 'n'.repeat(30) })).expect(201);
 		});
 	});
 
@@ -133,13 +133,25 @@ describe('POST /apps-users (e2e)', () => {
 			expect(bodyOf<ErrorBody>(response).msg).toContain('description must be a string');
 		});
 
-		it('returns 400 when the name is longer than 20 characters', async () => {
-			const response = await send(adminAuthorization(), validBody({ name: 'n'.repeat(21) })).expect(
+		it('returns 400 when the name is empty', async () => {
+			const response = await send(adminAuthorization(), validBody({ name: '' })).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('name should not be empty');
+		});
+
+		it('returns 400 when the description is empty', async () => {
+			const response = await send(adminAuthorization(), validBody({ description: '' })).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe('description should not be empty');
+		});
+
+		it('returns 400 when the name is longer than 30 characters', async () => {
+			const response = await send(adminAuthorization(), validBody({ name: 'n'.repeat(31) })).expect(
 				400,
 			);
 
 			expect(bodyOf<ErrorBody>(response).msg).toBe(
-				'name must be shorter than or equal to 20 characters',
+				'name must be shorter than or equal to 30 characters',
 			);
 		});
 
@@ -162,6 +174,26 @@ describe('POST /apps-users (e2e)', () => {
 			await send(adminAuthorization(), {}).expect(400);
 
 			expect(await appUserCount()).toBe(0);
+		});
+	});
+
+	describe('name uniqueness', () => {
+		it('returns 409 when an application user with that name already exists', async () => {
+			await send().expect(201);
+
+			const response = await send().expect(409);
+
+			expect(bodyOf<ErrorBody>(response).ok).toBe(false);
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
+				'An application user with this name already exists',
+			);
+		});
+
+		it('does not create a second application user when the name is taken', async () => {
+			await send().expect(201);
+			await send().expect(409);
+
+			expect(await appUserCount()).toBe(1);
 		});
 	});
 

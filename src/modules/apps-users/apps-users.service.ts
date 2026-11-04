@@ -28,6 +28,7 @@ import { CredentialGenerator } from './credential-generator';
 
 const BCRYPT_SALT_ROUNDS = 10;
 
+const APP_USER_NAME_ALREADY_EXISTS_MESSAGE = 'An application user with this name already exists';
 const APP_USER_NOT_FOUND_MESSAGE = 'Application user not found';
 const APPLICATION_NOT_FOUND_MESSAGE = 'Application not found';
 const ROLE_NOT_FOUND_MESSAGE = 'Role not found';
@@ -49,6 +50,11 @@ export class AppUsersService {
 	) {}
 
 	async create(dto: CreateAppUserDto): Promise<ResponseBody<AppUserCreatedResponse>> {
+		const existingAppUser = await this.appUsersRepository.findByName(dto.name);
+		if (existingAppUser) {
+			throw new ConflictException(APP_USER_NAME_ALREADY_EXISTS_MESSAGE);
+		}
+
 		const clienteId = CredentialGenerator.generateClienteId();
 		const plaintextClienteSecret = CredentialGenerator.generateClienteSecret();
 		const hashedClienteSecret = await this.hashSecret(plaintextClienteSecret);
@@ -60,12 +66,12 @@ export class AppUsersService {
 	}
 
 	async findAll(): Promise<ResponseBody<AppUserResponse[]>> {
-		const appUsers = await this.appUsersRepository.findAll();
+		const appUsers = await this.appUsersRepository.findAllOrderedByCreatedAtDesc();
 
 		return AppUserMapper.toFindAllResponse(appUsers);
 	}
 
-	hashSecret(secret: string): Promise<string> {
+	private hashSecret(secret: string): Promise<string> {
 		return bcrypt.hash(secret, BCRYPT_SALT_ROUNDS);
 	}
 

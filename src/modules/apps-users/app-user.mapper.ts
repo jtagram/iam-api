@@ -33,7 +33,7 @@ export class AppUserMapper {
 			.build();
 	}
 
-	static toCreatedResponse(
+	static toResponseWithSecret(
 		appUser: AppUserEntity,
 		plaintextClienteSecret: string,
 	): AppUserCreatedResponse {
@@ -61,7 +61,7 @@ export class AppUserMapper {
 	): ResponseBody<AppUserCreatedResponse> {
 		return ResponseBody.success(
 			APP_USER_CREATED_MESSAGE,
-			AppUserMapper.toCreatedResponse(appUser, plaintextClienteSecret),
+			AppUserMapper.toResponseWithSecret(appUser, plaintextClienteSecret),
 		);
 	}
 

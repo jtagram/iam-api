@@ -37,9 +37,9 @@ describe('AppUserMapper.toEntity', () => {
 	});
 });
 
-describe('AppUserMapper.toCreatedResponse', () => {
+describe('AppUserMapper.toResponseWithSecret', () => {
 	it('exposes the plaintext secret instead of the stored hash', () => {
-		const response = AppUserMapper.toCreatedResponse(stored, 'plain-secret');
+		const response = AppUserMapper.toResponseWithSecret(stored, 'plain-secret');
 
 		expect(response).toEqual({
 			id: 5,

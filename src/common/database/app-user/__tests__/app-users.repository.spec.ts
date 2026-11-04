@@ -110,18 +110,31 @@ describe('AppUsersRepository (in-memory db)', () => {
 		});
 	});
 
-	describe('findAll', () => {
-		it('returns an empty list when there are no app users', async () => {
-			await expect(repository.findAll()).resolves.toEqual([]);
+	describe('findByName', () => {
+		it('returns the app user with that name', async () => {
+			const saved = await repository.createAppUser(buildAppUser('a'));
+
+			await expect(repository.findByName(saved.name)).resolves.toMatchObject({ id: saved.id });
 		});
 
-		it('returns every app user', async () => {
-			await repository.createAppUser(buildAppUser('a'));
-			await repository.createAppUser(buildAppUser('b'));
+		it('returns null when no app user has that name', async () => {
+			await expect(repository.findByName('missing')).resolves.toBeNull();
+		});
+	});
 
-			const all = await repository.findAll();
+	describe('findAllOrderedByCreatedAtDesc', () => {
+		it('returns an empty list when there are no app users', async () => {
+			await expect(repository.findAllOrderedByCreatedAtDesc()).resolves.toEqual([]);
+		});
 
-			expect(all.map((appUser) => appUser.clienteId).sort()).toEqual(['a', 'b']);
+		it('returns every app user, the most recently created first', async () => {
+			const first = await repository.createAppUser(buildAppUser('a'));
+			const second = await repository.createAppUser(buildAppUser('b'));
+			await typeormRepository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
+
+			const all = await repository.findAllOrderedByCreatedAtDesc();
+
+			expect(all.map((appUser) => appUser.id)).toEqual([second.id, first.id]);
 		});
 	});
 });

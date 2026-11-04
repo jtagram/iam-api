@@ -19,11 +19,15 @@ export class AppUsersRepository {
 		return this.repository.findOne({ where: { clienteId } });
 	}
 
+	findByName(name: string): Promise<AppUserEntity | null> {
+		return this.repository.findOne({ where: { name } });
+	}
+
 	findById(id: number): Promise<AppUserEntity | null> {
 		return this.repository.findOne({ where: { id } });
 	}
 
-	findAll(): Promise<AppUserEntity[]> {
-		return this.repository.find();
+	findAllOrderedByCreatedAtDesc(): Promise<AppUserEntity[]> {
+		return this.repository.find({ order: { createdAt: 'DESC' } });
 	}
 }

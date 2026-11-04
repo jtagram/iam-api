@@ -4,11 +4,11 @@ import { AppUsersRepository } from '../../../../common/database/app-user/app-use
 import { AppUsersService } from '../../apps-users.service';
 
 describe('AppUsersService.findAll', () => {
-	let repository: { findAll: ReturnType<typeof mockFn> };
+	let repository: { findAllOrderedByCreatedAtDesc: ReturnType<typeof mockFn> };
 	let service: AppUsersService;
 
 	beforeEach(() => {
-		repository = { findAll: mockFn() };
+		repository = { findAllOrderedByCreatedAtDesc: mockFn() };
 		service = new AppUsersService(
 			repository as unknown as AppUsersRepository,
 			{} as never,
@@ -20,7 +20,7 @@ describe('AppUsersService.findAll', () => {
 	});
 
 	it('maps every user without exposing the secret hash', async () => {
-		repository.findAll.mockResolvedValue([
+		repository.findAllOrderedByCreatedAtDesc.mockResolvedValue([
 			{
 				id: 1,
 				clienteId: 'a',
@@ -51,7 +51,7 @@ describe('AppUsersService.findAll', () => {
 	});
 
 	it('returns an empty list when there are no users', async () => {
-		repository.findAll.mockResolvedValue([]);
+		repository.findAllOrderedByCreatedAtDesc.mockResolvedValue([]);
 
 		await expect(service.findAll()).resolves.toEqual({
 			ok: true,
@@ -62,7 +62,7 @@ describe('AppUsersService.findAll', () => {
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		repository.findAll.mockRejectedValue(failure);
+		repository.findAllOrderedByCreatedAtDesc.mockRejectedValue(failure);
 
 		await expect(service.findAll()).rejects.toBe(failure);
 	});

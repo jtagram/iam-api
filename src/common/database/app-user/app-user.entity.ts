@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity({ name: 'apps_users' })
 export class AppUserEntity {
@@ -16,6 +16,9 @@ export class AppUserEntity {
 
 	@Column({ length: 200 })
 	description!: string;
+
+	@CreateDateColumn({ name: 'created_at' })
+	createdAt!: Date;
 
 	static builder(): AppUserEntityBuilder {
 		return new AppUserEntityBuilder();
