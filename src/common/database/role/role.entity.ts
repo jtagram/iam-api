@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import {
+	Column,
+	CreateDateColumn,
+	Entity,
+	PrimaryGeneratedColumn,
+	Unique,
+	UpdateDateColumn,
+} from 'typeorm';
 
 @Entity({ name: 'apps_roles' })
 @Unique(['applicationId', 'name'])
@@ -17,6 +24,9 @@ export class RoleEntity {
 
 	@CreateDateColumn({ name: 'created_at' })
 	createdAt!: Date;
+
+	@UpdateDateColumn({ name: 'updated_at' })
+	updatedAt!: Date;
 
 	static builder(): RoleEntityBuilder {
 		return new RoleEntityBuilder();

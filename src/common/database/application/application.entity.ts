@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+	Column,
+	CreateDateColumn,
+	Entity,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
+} from 'typeorm';
 
 @Entity({ name: 'apps_applications' })
 export class ApplicationEntity {
@@ -13,6 +19,9 @@ export class ApplicationEntity {
 
 	@CreateDateColumn({ name: 'created_at' })
 	createdAt!: Date;
+
+	@UpdateDateColumn({ name: 'updated_at' })
+	updatedAt!: Date;
 
 	static builder(): ApplicationEntityBuilder {
 		return new ApplicationEntityBuilder();

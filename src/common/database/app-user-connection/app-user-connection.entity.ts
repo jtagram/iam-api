@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+	Column,
+	CreateDateColumn,
+	Entity,
+	PrimaryGeneratedColumn,
+	UpdateDateColumn,
+} from 'typeorm';
 
 /**
  * One allowed `origin -> destination` application pair for an application
@@ -21,4 +27,7 @@ export class AppUserConnectionEntity {
 
 	@CreateDateColumn({ name: 'created_at' })
 	createdAt!: Date;
+
+	@UpdateDateColumn({ name: 'updated_at' })
+	updatedAt!: Date;
 }
