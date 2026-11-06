@@ -1,142 +1,121 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
 import { NotFoundException } from '@nestjs/common';
+import {
+	applicationAssignment,
+	applicationRow,
+	roleRow,
+} from '../../../../../test/helpers/assignment-rows';
 import { mockFn } from '../../../../../test/helpers/mocks';
-import { ApplicationsRepository } from '../../../../common/database/application/applications.repository';
-import { RolesRepository } from '../../../../common/database/role/roles.repository';
 import { AppUsersRepository } from '../../../../common/database/app-user/app-users.repository';
-import { UserAppsRepository } from '../../../../common/database/user-application/user-apps.repository';
-import { UserRolesRepository } from '../../../../common/database/user-role/user-roles.repository';
 import { AppUsersService } from '../../apps-users.service';
 
-const dataOf = (result: unknown) => (result as { data: Array<{ roles: unknown[] }> }).data;
+const applicationsOf = (result: { data?: unknown }) =>
+	(
+		result.data as {
+			applications: Array<{
+				applicationId: number;
+				application: { id: number };
+				roles: Array<{ role: { name: string } }>;
+			}>;
+		}
+	).applications;
 
 describe('AppUsersService.findAssignedApplications', () => {
-	let users: { findById: ReturnType<typeof mockFn> };
-	let applications: { findByIds: ReturnType<typeof mockFn> };
-	let roles: { findByIds: ReturnType<typeof mockFn> };
-	let userApps: { findAllByAppUserId: ReturnType<typeof mockFn> };
-	let userRoles: { findAllByAppUserId: ReturnType<typeof mockFn> };
+	let users: { findByIdWithAssignments: ReturnType<typeof mockFn> };
 	let service: AppUsersService;
 
+	const iam = applicationRow(10, 'iam', 'Identity');
+	const hub = applicationRow(20, 'hub', 'Tickets');
+	const admin = roleRow(100, 10, 'ADMIN', 'Admin');
+	const viewer = roleRow(200, 20, 'VIEWER', 'Viewer');
+
 	beforeEach(() => {
-		users = { findById: mockFn() };
-		applications = { findByIds: mockFn() };
-		roles = { findByIds: mockFn() };
-		userApps = { findAllByAppUserId: mockFn() };
-		userRoles = { findAllByAppUserId: mockFn() };
-		service = new AppUsersService(
-			users as unknown as AppUsersRepository,
-			applications as unknown as ApplicationsRepository,
-			roles as unknown as RolesRepository,
-			userApps as unknown as UserAppsRepository,
-			userRoles as unknown as UserRolesRepository,
-			{} as never,
-		);
-		users.findById.mockResolvedValue({ id: 1 });
-		userApps.findAllByAppUserId.mockResolvedValue([]);
-		userRoles.findAllByAppUserId.mockResolvedValue([]);
-		applications.findByIds.mockResolvedValue([]);
-		roles.findByIds.mockResolvedValue([]);
+		users = { findByIdWithAssignments: mockFn() };
+		service = new AppUsersService(users as unknown as AppUsersRepository, {} as never, {} as never);
+		users.findByIdWithAssignments.mockResolvedValue({ id: 1, applications: [] });
 	});
 
 	it('throws NotFound when the user does not exist', async () => {
-		users.findById.mockResolvedValue(null);
+		users.findByIdWithAssignments.mockResolvedValue(null);
 
 		await expect(service.findAssignedApplications(1)).rejects.toThrow(
 			new NotFoundException('Application user not found'),
 		);
-		expect(userApps.findAllByAppUserId).not.toHaveBeenCalled();
 	});
 
-	it('returns an empty list for a user without applications nor roles', async () => {
-		await expect(service.findAssignedApplications(1)).resolves.toEqual({
-			ok: true,
-			msg: 'Assigned applications retrieved successfully',
-			data: [],
-		});
-		expect(applications.findByIds).toHaveBeenCalledWith([]);
-		expect(roles.findByIds).toHaveBeenCalledWith([]);
+	it('loads the user with its assignments in a single repository call', async () => {
+		await service.findAssignedApplications(1);
+
+		expect(users.findByIdWithAssignments).toHaveBeenCalledTimes(1);
+		expect(users.findByIdWithAssignments).toHaveBeenCalledWith(1);
 	});
 
-	it('returns an assigned application with no roles when none were assigned', async () => {
-		userApps.findAllByAppUserId.mockResolvedValue([{ applicationId: 10 }]);
-		applications.findByIds.mockResolvedValue([{ id: 10, name: 'iam', description: 'Identity' }]);
-
-		await expect(service.findAssignedApplications(1)).resolves.toEqual({
-			ok: true,
-			msg: 'Assigned applications retrieved successfully',
-			data: [
-				{
-					applicationId: 10,
-					applicationName: 'iam',
-					applicationDescription: 'Identity',
-					roles: [],
-				},
-			],
-		});
-	});
-
-	it('groups each role under the application it belongs to', async () => {
-		userApps.findAllByAppUserId.mockResolvedValue([{ applicationId: 10 }, { applicationId: 20 }]);
-		userRoles.findAllByAppUserId.mockResolvedValue([
-			{ applicationId: 10, roleId: 100 },
-			{ applicationId: 20, roleId: 200 },
-		]);
-		applications.findByIds.mockResolvedValue([
-			{ id: 10, name: 'iam', description: 'Identity' },
-			{ id: 20, name: 'hub', description: 'Tickets' },
-		]);
-		roles.findByIds.mockResolvedValue([
-			{ id: 100, applicationId: 10, name: 'ADMIN', description: 'Admin' },
-			{ id: 200, applicationId: 20, name: 'VIEWER', description: 'Viewer' },
-		]);
+	it('returns the user itself with an empty applications list when nothing is assigned', async () => {
+		const user = { id: 1, applications: [] };
+		users.findByIdWithAssignments.mockResolvedValue(user);
 
 		const result = await service.findAssignedApplications(1);
 
-		expect(dataOf(result).map((entry) => entry.roles)).toEqual([
-			[{ id: 100, name: 'ADMIN', description: 'Admin' }],
-			[{ id: 200, name: 'VIEWER', description: 'Viewer' }],
+		expect(result).toEqual({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+			data: user,
+		});
+		expect(result.data).toBe(user);
+	});
+
+	it('returns the assignment rows as the repository loaded them, application included', async () => {
+		const row = applicationAssignment(iam);
+		const user = { id: 1, applications: [row] };
+		users.findByIdWithAssignments.mockResolvedValue(user);
+
+		const result = await service.findAssignedApplications(1);
+
+		expect(result).toMatchObject({
+			ok: true,
+			msg: 'Assigned applications retrieved successfully',
+		});
+		expect(result.data).toBe(user);
+		expect(result.data?.applications[0]).toBe(row);
+		expect(result.data?.applications[0]).toMatchObject({
+			application: { id: 10, name: 'iam' },
+			roles: [],
+		});
+	});
+
+	it('keeps each role nested under the application assignment it hangs off', async () => {
+		users.findByIdWithAssignments.mockResolvedValue({
+			id: 1,
+			applications: [applicationAssignment(hub, [viewer]), applicationAssignment(iam, [admin])],
+		});
+
+		const result = await service.findAssignedApplications(1);
+
+		expect(
+			applicationsOf(result).map((entry) => [
+				entry.application.id,
+				entry.roles.map((r) => r.role.name),
+			]),
+		).toEqual([
+			[20, ['VIEWER']],
+			[10, ['ADMIN']],
 		]);
 	});
 
-	it('includes an application that only came from a role assignment', async () => {
-		userRoles.findAllByAppUserId.mockResolvedValue([{ applicationId: 20, roleId: 200 }]);
-		applications.findByIds.mockResolvedValue([{ id: 20, name: 'hub', description: 'Tickets' }]);
-		roles.findByIds.mockResolvedValue([
-			{ id: 200, applicationId: 20, name: 'VIEWER', description: 'Viewer' },
-		]);
+	it('keeps the order the repository returns (newest first)', async () => {
+		users.findByIdWithAssignments.mockResolvedValue({
+			id: 1,
+			applications: [applicationAssignment(hub), applicationAssignment(iam)],
+		});
 
-		await service.findAssignedApplications(1);
+		const result = await service.findAssignedApplications(1);
 
-		expect(applications.findByIds).toHaveBeenCalledWith([20]);
-	});
-
-	it('looks each application up once when it came from both assignments', async () => {
-		userApps.findAllByAppUserId.mockResolvedValue([{ applicationId: 10 }]);
-		userRoles.findAllByAppUserId.mockResolvedValue([
-			{ applicationId: 10, roleId: 100 },
-			{ applicationId: 10, roleId: 101 },
-		]);
-
-		await service.findAssignedApplications(1);
-
-		expect(applications.findByIds).toHaveBeenCalledWith([10]);
-	});
-
-	it('loads the roles by the ids of the role assignments', async () => {
-		userRoles.findAllByAppUserId.mockResolvedValue([
-			{ applicationId: 10, roleId: 100 },
-			{ applicationId: 20, roleId: 200 },
-		]);
-
-		await service.findAssignedApplications(1);
-
-		expect(roles.findByIds).toHaveBeenCalledWith([100, 200]);
+		expect(applicationsOf(result).map((entry) => entry.applicationId)).toEqual([20, 10]);
 	});
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		userApps.findAllByAppUserId.mockRejectedValue(failure);
+		users.findByIdWithAssignments.mockRejectedValue(failure);
 
 		await expect(service.findAssignedApplications(1)).rejects.toBe(failure);
 	});

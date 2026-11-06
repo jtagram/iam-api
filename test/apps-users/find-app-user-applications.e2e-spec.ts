@@ -17,7 +17,14 @@ import {
 	expiredAuthorization,
 } from '../helpers/test-auth';
 import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
-import { AppUserApplicationRolesResponse } from '../../src/modules/apps-users/dto/app-user-application-roles-response.dto';
+import { ApplicationEntity } from '../../src/common/database/application/application.entity';
+import { RoleEntity } from '../../src/common/database/role/role.entity';
+import { UserAppEntity } from '../../src/common/database/user-application/user-app.entity';
+
+const userOf = (response: { body: unknown }) =>
+	dataOf<{ id: number; applications: UserAppEntity[] }>(response);
+
+const SECRET_PATTERN = /password|\$2[aby]\$|clienteSecret|cliente_secret/;
 
 describe('GET /apps-users/:id/applications (e2e)', () => {
 	let testApp: AppTestApp;
@@ -47,61 +54,98 @@ describe('GET /apps-users/:id/applications (e2e)', () => {
 		return req;
 	}
 
-	it('returns 200 with an empty list when the user has no assignments', async () => {
+	it('returns 200 with the user and an empty applications list when it has no assignments', async () => {
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
-			ok: true,
-			msg: 'Assigned applications retrieved successfully',
-			data: [],
-		});
+		const body = response.body as { ok: boolean; msg: string };
+		expect(body.ok).toBe(true);
+		expect(body.msg).toBe('Assigned applications retrieved successfully');
+		expect(userOf(response).id).toBe(userId);
+		expect(userOf(response).applications).toEqual([]);
+		expect(response.text).not.toMatch(SECRET_PATTERN);
 	});
 
-	it('returns an assigned application with an empty role list', async () => {
+	it('returns the assignment row with its application and an empty role list', async () => {
 		await grantAppUserApplication(testApp.dataSource, userId, iam.iamApplication.id);
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
-			ok: true,
-			msg: 'Assigned applications retrieved successfully',
-			data: [
-				{
-					applicationId: iam.iamApplication.id,
-					applicationName: 'iam',
-					applicationDescription: 'Identity and access management',
-					roles: [],
-				},
-			],
-		});
-	});
-
-	it('returns the roles assigned to the user inside their own application', async () => {
-		await grantAppUserApplication(testApp.dataSource, userId, iam.iamApplication.id);
-		await grantAppUserRole(testApp.dataSource, userId, iam.adminRole);
-
-		const response = await send().expect(200);
-
-		expect(dataOf<AppUserApplicationRolesResponse[]>(response)).toEqual([
-			{
-				applicationId: iam.iamApplication.id,
-				applicationName: 'iam',
-				applicationDescription: 'Identity and access management',
-				roles: [{ id: iam.adminRole.id, name: 'ADMIN', description: 'Administrator' }],
+		const body = response.body as { ok: boolean; msg: string };
+		expect(body.ok).toBe(true);
+		expect(body.msg).toBe('Assigned applications retrieved successfully');
+		expect(userOf(response).id).toBe(userId);
+		const rows = userOf(response).applications;
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({
+			appUserId: userId,
+			applicationId: iam.iamApplication.id,
+			application: {
+				id: iam.iamApplication.id,
+				name: 'iam',
+				description: 'Identity and access management',
 			},
-		]);
+			roles: [],
+		});
+		expect(rows[0]).not.toHaveProperty('appUser');
+		expect(response.text).not.toMatch(SECRET_PATTERN);
 	});
 
-	it('lists an application that was only reached through a role assignment', async () => {
+	it('returns the roles assigned to the user nested as roles[].role inside their application row', async () => {
+		await grantAppUserApplication(testApp.dataSource, userId, iam.iamApplication.id);
 		await grantAppUserRole(testApp.dataSource, userId, iam.adminRole);
 
 		const response = await send().expect(200);
 
-		expect(dataOf<AppUserApplicationRolesResponse[]>(response)).toHaveLength(1);
-		expect(dataOf<AppUserApplicationRolesResponse[]>(response)[0].applicationId).toBe(
-			iam.iamApplication.id,
-		);
-		expect(dataOf<AppUserApplicationRolesResponse[]>(response)[0].roles).toHaveLength(1);
+		const [row] = userOf(response).applications;
+		expect(row.application).toMatchObject({ id: iam.iamApplication.id, name: 'iam' });
+		expect(row.roles).toHaveLength(1);
+		expect(row.roles[0]).toMatchObject({
+			roleId: iam.adminRole.id,
+			role: { id: iam.adminRole.id, name: 'ADMIN', description: 'Administrator' },
+		});
+	});
+
+	it('never exposes the clienteSecret of any app user in the response', async () => {
+		await grantAppUserRole(testApp.dataSource, userId, iam.adminRole);
+
+		const response = await send().expect(200);
+
+		expect(response.text).not.toMatch(SECRET_PATTERN);
+		expect(response.text).not.toContain('client-secret-1');
+	});
+
+	it('orders applications newest first, and the roles of each one newest first', async () => {
+		const billing = await createApplication(testApp.dataSource, 'billing', 'Billing');
+		const payer = await createRole(testApp.dataSource, billing.id, 'PAYER');
+		const refunder = await createRole(testApp.dataSource, billing.id, 'REFUNDER');
+		await grantAppUserRole(testApp.dataSource, userId, iam.adminRole);
+		await grantAppUserRole(testApp.dataSource, userId, payer);
+		await grantAppUserRole(testApp.dataSource, userId, refunder);
+		await testApp.dataSource
+			.getRepository(ApplicationEntity)
+			.update(iam.iamApplication.id, { createdAt: new Date(Date.UTC(2024, 0, 1)) });
+		await testApp.dataSource
+			.getRepository(ApplicationEntity)
+			.update(billing.id, { createdAt: new Date(Date.UTC(2024, 0, 2)) });
+		const roles = testApp.dataSource.getRepository(RoleEntity);
+		await roles.update(payer.id, { createdAt: new Date(Date.UTC(2024, 0, 3)) });
+		await roles.update(refunder.id, { createdAt: new Date(Date.UTC(2024, 0, 4)) });
+
+		const response = await send().expect(200);
+
+		const rows = userOf(response).applications;
+		expect(rows.map((row) => row.application.name)).toEqual(['billing', 'iam']);
+		expect(rows[0].roles.map((roleRow) => roleRow.role.name)).toEqual(['REFUNDER', 'PAYER']);
+	});
+
+	it('lists the application a granted role hangs off', async () => {
+		await grantAppUserRole(testApp.dataSource, userId, iam.adminRole);
+
+		const response = await send().expect(200);
+
+		expect(userOf(response).applications).toHaveLength(1);
+		expect(userOf(response).applications[0].applicationId).toBe(iam.iamApplication.id);
+		expect(userOf(response).applications[0].roles).toHaveLength(1);
 	});
 
 	it('keeps the roles grouped under the application they belong to', async () => {
@@ -115,12 +159,10 @@ describe('GET /apps-users/:id/applications (e2e)', () => {
 		const response = await send().expect(200);
 
 		const byName = Object.fromEntries(
-			dataOf<AppUserApplicationRolesResponse[]>(response).map(
-				(entry: { applicationName: string; roles: { name: string }[] }) => [
-					entry.applicationName,
-					entry.roles.map((role) => role.name),
-				],
-			),
+			userOf(response).applications.map((entry) => [
+				entry.application.name,
+				entry.roles.map((roleRow) => roleRow.role.name),
+			]),
 		);
 		expect(byName).toEqual({ iam: ['ADMIN'], billing: ['PAYER'] });
 	});
@@ -132,7 +174,7 @@ describe('GET /apps-users/:id/applications (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(dataOf<AppUserApplicationRolesResponse[]>(response)).toEqual([]);
+		expect(userOf(response).applications).toEqual([]);
 	});
 
 	describe('errors', () => {

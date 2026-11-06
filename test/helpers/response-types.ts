@@ -20,3 +20,18 @@ export function bodyOf<T>(res: { body: unknown }): T {
 export function dataOf<T>(res: { body: unknown }): T {
 	return bodyOf<ResponseBody<T>>(res).data as T;
 }
+
+/** One connection of the user as serialized, both applications loaded. */
+export interface ConnectionBody {
+	id: number;
+	originApplicationId: number;
+	destinationApplicationId: number;
+	originApplication: { id: number; name: string };
+	destinationApplication: { id: number; name: string };
+}
+
+/** Internal or app user serialized with its connections. */
+export interface UserWithConnectionsBody {
+	id: number;
+	connections: ConnectionBody[];
+}

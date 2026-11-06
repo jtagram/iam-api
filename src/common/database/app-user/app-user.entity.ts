@@ -1,10 +1,14 @@
+import { Exclude } from 'class-transformer';
 import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
+import { AppUserConnectionEntity } from '../app-user-connection/app-user-connection.entity';
+import { UserAppEntity } from '../user-application/user-app.entity';
 
 @Entity({ name: 'apps_users' })
 export class AppUserEntity {
@@ -14,6 +18,8 @@ export class AppUserEntity {
 	@Column({ name: 'cliente_id', length: 30, unique: true })
 	clienteId!: string;
 
+	// Never serialized: the global ClassSerializerInterceptor drops it from every HTTP response.
+	@Exclude({ toPlainOnly: true })
 	@Column({ name: 'cliente_secret', length: 60 })
 	clienteSecret!: string;
 
@@ -28,6 +34,12 @@ export class AppUserEntity {
 
 	@UpdateDateColumn({ name: 'updated_at' })
 	updatedAt!: Date;
+
+	@OneToMany(() => UserAppEntity, (userApp) => userApp.appUser)
+	applications!: UserAppEntity[];
+
+	@OneToMany(() => AppUserConnectionEntity, (connection) => connection.appUser)
+	connections!: AppUserConnectionEntity[];
 
 	static builder(): AppUserEntityBuilder {
 		return new AppUserEntityBuilder();

@@ -10,7 +10,6 @@ import * as bcrypt from 'bcrypt';
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
 import { AppUsersRepository } from '../../common/database/app-user/app-users.repository';
 import { RolesRepository } from '../../common/database/role/roles.repository';
-import { AppUserConnectionsRepository } from '../../common/database/app-user-connection/app-user-connections.repository';
 import { UserAppsRepository } from '../../common/database/user-application/user-apps.repository';
 import { UserRolesRepository } from '../../common/database/user-role/user-roles.repository';
 import { AppsPayloadMapper } from '../../common/jwt/apps-payload.mapper';
@@ -40,7 +39,6 @@ export class AppUsersLoginService {
 		private readonly appUsersRepository: AppUsersRepository,
 		private readonly applicationsRepository: ApplicationsRepository,
 		private readonly userAppsRepository: UserAppsRepository,
-		private readonly appUserConnectionsRepository: AppUserConnectionsRepository,
 		private readonly userRolesRepository: UserRolesRepository,
 		private readonly rolesRepository: RolesRepository,
 		private readonly jwtService: JwtService,
@@ -82,7 +80,7 @@ export class AppUsersLoginService {
 			FORBIDDEN_TARGET_ACCESS_MESSAGE,
 		);
 
-		const hasConnection = await this.appUserConnectionsRepository.existsForAppUserAndApplications(
+		const hasConnection = await this.appUsersRepository.hasConnection(
 			appUser.id,
 			originApplication.id,
 			application.id,

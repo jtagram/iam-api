@@ -1,139 +1,87 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
 import { NotFoundException } from '@nestjs/common';
 import { mockFn } from '../../../../../test/helpers/mocks';
-import { ApplicationsRepository } from '../../../../common/database/application/applications.repository';
-import { RolesRepository } from '../../../../common/database/role/roles.repository';
 import { AppUsersRepository } from '../../../../common/database/app-user/app-users.repository';
-import { AppUserConnectionsRepository } from '../../../../common/database/app-user-connection/app-user-connections.repository';
 import { AppUsersService } from '../../apps-users.service';
 
 describe('AppUsersService.findConnections', () => {
-	let users: { findById: ReturnType<typeof mockFn> };
+	let users: { findByIdWithConnections: ReturnType<typeof mockFn> };
 	let applications: { findByIds: ReturnType<typeof mockFn> };
-	let connections: { findAllByAppUserIdOrderedByCreatedAtDesc: ReturnType<typeof mockFn> };
 	let service: AppUsersService;
 
 	beforeEach(() => {
-		users = { findById: mockFn() };
+		users = { findByIdWithConnections: mockFn() };
 		applications = { findByIds: mockFn() };
-		connections = { findAllByAppUserIdOrderedByCreatedAtDesc: mockFn() };
 		service = new AppUsersService(
 			users as unknown as AppUsersRepository,
-			applications as unknown as ApplicationsRepository,
-			{} as unknown as RolesRepository,
+			applications as never,
 			{} as never,
-			{} as never,
-			connections as unknown as AppUserConnectionsRepository,
 		);
-		users.findById.mockResolvedValue({ id: 1 });
 	});
 
+	const userWithConnections = {
+		id: 1,
+		connections: [
+			{
+				id: 2,
+				originApplicationId: 10,
+				destinationApplicationId: 30,
+				originApplication: { id: 10, name: 'iam' },
+				destinationApplication: { id: 30, name: 'infra' },
+			},
+			{
+				id: 1,
+				originApplicationId: 10,
+				destinationApplicationId: 20,
+				originApplication: { id: 10, name: 'iam' },
+				destinationApplication: { id: 20, name: 'hub' },
+			},
+		],
+	};
+
 	it('throws NotFound when the user does not exist', async () => {
-		users.findById.mockResolvedValue(null);
+		users.findByIdWithConnections.mockResolvedValue(null);
 
 		await expect(service.findConnections(1)).rejects.toThrow(
 			new NotFoundException('Application user not found'),
 		);
-		expect(connections.findAllByAppUserIdOrderedByCreatedAtDesc).not.toHaveBeenCalled();
 	});
 
-	it('returns the connections with the names of both applications', async () => {
-		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([
-			{
-				id: 1,
-				appUserId: 1,
-				originApplicationId: 10,
-				destinationApplicationId: 20,
-			},
-			{
-				id: 2,
-				appUserId: 1,
-				originApplicationId: 10,
-				destinationApplicationId: 30,
-			},
-		]);
-		applications.findByIds.mockResolvedValue([
-			{ id: 10, name: 'iam' },
-			{ id: 20, name: 'hub' },
-			{ id: 30, name: 'infra' },
-		]);
+	it('returns the user with its connections as loaded by the repository', async () => {
+		users.findByIdWithConnections.mockResolvedValue(userWithConnections);
 
-		await expect(service.findConnections(1)).resolves.toEqual({
+		const response = await service.findConnections(1);
+
+		expect(response).toEqual({
 			ok: true,
 			msg: 'Connections retrieved successfully',
-			data: [
-				{
-					id: 1,
-					originApplicationId: 10,
-					originApplicationName: 'iam',
-					destinationApplicationId: 20,
-					destinationApplicationName: 'hub',
-				},
-				{
-					id: 2,
-					originApplicationId: 10,
-					originApplicationName: 'iam',
-					destinationApplicationId: 30,
-					destinationApplicationName: 'infra',
-				},
-			],
+			data: userWithConnections,
 		});
-		expect(connections.findAllByAppUserIdOrderedByCreatedAtDesc).toHaveBeenCalledWith(1);
+		expect(response.data).toBe(userWithConnections);
+		expect(users.findByIdWithConnections).toHaveBeenCalledWith(1);
 	});
 
-	it('looks every application up once, even when it appears several times', async () => {
-		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([
-			{
-				id: 1,
-				appUserId: 1,
-				originApplicationId: 10,
-				destinationApplicationId: 20,
-			},
-			{
-				id: 2,
-				appUserId: 1,
-				originApplicationId: 10,
-				destinationApplicationId: 30,
-			},
-		]);
-		applications.findByIds.mockResolvedValue([]);
+	it('does not look the applications up again', async () => {
+		users.findByIdWithConnections.mockResolvedValue(userWithConnections);
 
 		await service.findConnections(1);
 
-		expect(applications.findByIds).toHaveBeenCalledWith([10, 20, 30]);
+		expect(applications.findByIds).not.toHaveBeenCalled();
 	});
 
-	it('returns an empty list for a user without connections', async () => {
-		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([]);
-		applications.findByIds.mockResolvedValue([]);
+	it('returns an empty connection list for a user without connections', async () => {
+		users.findByIdWithConnections.mockResolvedValue({ id: 1, connections: [] });
 
 		await expect(service.findConnections(1)).resolves.toEqual({
 			ok: true,
 			msg: 'Connections retrieved successfully',
-			data: [],
+			data: { id: 1, connections: [] },
 		});
-		expect(applications.findByIds).toHaveBeenCalledWith([]);
-	});
-
-	it('leaves the application name undefined when the application no longer exists (current behavior)', async () => {
-		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockResolvedValue([
-			{
-				id: 1,
-				appUserId: 1,
-				originApplicationId: 10,
-				destinationApplicationId: 20,
-			},
-		]);
-		applications.findByIds.mockResolvedValue([{ id: 10, name: 'iam' }]);
-
-		const result = await service.findConnections(1);
-
-		expect(result.data?.[0].destinationApplicationName).toBeUndefined();
 	});
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		connections.findAllByAppUserIdOrderedByCreatedAtDesc.mockRejectedValue(failure);
+		users.findByIdWithConnections.mockRejectedValue(failure);
 
 		await expect(service.findConnections(1)).rejects.toBe(failure);
 	});

@@ -150,6 +150,19 @@ describe('GET /internal-users/by-role (e2e)', () => {
 			});
 		});
 
+		it('returns an empty array when the application does not exist', async () => {
+			const response = await send(adminAuthorization(), {
+				applicationName: 'missing',
+				roles: 'ADMIN',
+			}).expect(200);
+
+			expect(response.body).toEqual({
+				ok: true,
+				msg: 'Internal users retrieved successfully',
+				data: [],
+			});
+		});
+
 		it('returns an empty array when the roles list only has separators', async () => {
 			const response = await send(adminAuthorization(), {
 				applicationName: 'iam',
@@ -216,15 +229,6 @@ describe('GET /internal-users/by-role (e2e)', () => {
 				roles: '',
 			}).expect(400);
 		});
-	});
-
-	it('returns 404 when the application does not exist', async () => {
-		const response = await send(adminAuthorization(), {
-			applicationName: 'missing',
-			roles: 'ADMIN',
-		}).expect(404);
-
-		expect(response.body).toEqual({ ok: false, msg: 'Application not found', data: null });
 	});
 
 	describe('authorization', () => {

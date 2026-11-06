@@ -16,7 +16,7 @@ describe('InternalUsersController.findAssignedApplications', () => {
 	});
 
 	it('delegates to InternalUsersService.findAssignedApplications and returns its result', async () => {
-		const result = { msg: 'ok', data: [] };
+		const result = { msg: 'ok', data: { id: 7, applications: [] } };
 		service.findAssignedApplications.mockResolvedValue(result);
 
 		await expect(controller.findAssignedApplications(7)).resolves.toBe(result);

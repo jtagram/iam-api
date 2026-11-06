@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DataSource, Repository } from 'typeorm';
+import { clearAllTables } from '../../../../../test/helpers/clear-tables';
+import { ENTITIES } from '../../../../../test/helpers/entities';
+import { insertParentRows } from '../../../../../test/helpers/fixtures';
 import { createInMemoryDataSource } from '../../../../../test/helpers/in-memory-db';
 import { InternalUserAppEntity } from '../internal-user-app.entity';
 import { InternalUserAppsRepository } from '../internal-user-apps.repository';
@@ -17,7 +20,7 @@ describe('InternalUserAppsRepository (in-memory db)', () => {
 	let repository: InternalUserAppsRepository;
 
 	beforeAll(async () => {
-		dataSource = await createInMemoryDataSource([InternalUserAppEntity]);
+		dataSource = await createInMemoryDataSource(ENTITIES);
 	});
 
 	afterAll(async () => {
@@ -27,63 +30,28 @@ describe('InternalUserAppsRepository (in-memory db)', () => {
 	beforeEach(async () => {
 		jest.restoreAllMocks();
 		typeormRepository = dataSource.getRepository(InternalUserAppEntity);
-		await typeormRepository.clear();
+		await clearAllTables(dataSource);
+		await insertParentRows(dataSource, { internalUsers: [1, 2], applications: [10, 11, 12] });
 		repository = new InternalUserAppsRepository(typeormRepository);
-	});
-
-	describe('createAssignment', () => {
-		it('persists the assignment and returns it with a generated id', async () => {
-			const saved = await repository.createAssignment(build(1, 10));
-
-			expect(saved).toMatchObject({
-				id: expect.any(Number),
-				internalUserId: 1,
-				applicationId: 10,
-			});
-			expect(await typeormRepository.count()).toBe(1);
-		});
-
-		it('does not enforce uniqueness itself (the service does)', async () => {
-			await repository.createAssignment(build(1, 10));
-			await repository.createAssignment(build(1, 10));
-
-			expect(await typeormRepository.count()).toBe(2);
-		});
 	});
 
 	describe('existsForInternalUserAndApplication', () => {
 		it('returns true when the pair is assigned', async () => {
-			await repository.createAssignment(build(1, 10));
+			await typeormRepository.save(build(1, 10));
 
 			await expect(repository.existsForInternalUserAndApplication(1, 10)).resolves.toBe(true);
 		});
 
 		it('returns false for another application of the same user', async () => {
-			await repository.createAssignment(build(1, 10));
+			await typeormRepository.save(build(1, 10));
 
 			await expect(repository.existsForInternalUserAndApplication(1, 11)).resolves.toBe(false);
 		});
 
 		it('returns false for the same application of another user', async () => {
-			await repository.createAssignment(build(1, 10));
+			await typeormRepository.save(build(1, 10));
 
 			await expect(repository.existsForInternalUserAndApplication(2, 10)).resolves.toBe(false);
-		});
-	});
-
-	describe('findAllByInternalUserId', () => {
-		it('returns only the assignments of that user', async () => {
-			await repository.createAssignment(build(1, 10));
-			await repository.createAssignment(build(1, 11));
-			await repository.createAssignment(build(2, 12));
-
-			const found = await repository.findAllByInternalUserId(1);
-
-			expect(found.map((row) => row.applicationId).sort()).toEqual([10, 11]);
-		});
-
-		it('returns an empty list for a user without assignments', async () => {
-			await expect(repository.findAllByInternalUserId(9)).resolves.toEqual([]);
 		});
 	});
 });

@@ -110,14 +110,22 @@ export function grantInternalUserApplication(
 	return dataSource.getRepository(InternalUserAppEntity).save({ internalUserId, applicationId });
 }
 
-export function grantInternalUserRole(
+/**
+ * Grants a role through the user's assignment of the role's application,
+ * creating that assignment first when the user does not have it yet.
+ */
+export async function grantInternalUserRole(
 	dataSource: DataSource,
 	internalUserId: number,
 	role: RoleEntity,
 ): Promise<InternalUserRoleEntity> {
+	const assignment =
+		(await dataSource
+			.getRepository(InternalUserAppEntity)
+			.findOneBy({ internalUserId, applicationId: role.applicationId })) ??
+		(await grantInternalUserApplication(dataSource, internalUserId, role.applicationId));
 	return dataSource.getRepository(InternalUserRoleEntity).save({
-		internalUserId,
-		applicationId: role.applicationId,
+		internalUserApplicationId: assignment.id,
 		roleId: role.id,
 	});
 }
@@ -169,14 +177,22 @@ export function grantAppUserApplication(
 	return dataSource.getRepository(UserAppEntity).save({ appUserId, applicationId });
 }
 
-export function grantAppUserRole(
+/**
+ * Grants a role through the app user's assignment of the role's application,
+ * creating that assignment first when the user does not have it yet.
+ */
+export async function grantAppUserRole(
 	dataSource: DataSource,
 	appUserId: number,
 	role: RoleEntity,
 ): Promise<UserRoleEntity> {
+	const assignment =
+		(await dataSource
+			.getRepository(UserAppEntity)
+			.findOneBy({ appUserId, applicationId: role.applicationId })) ??
+		(await grantAppUserApplication(dataSource, appUserId, role.applicationId));
 	return dataSource.getRepository(UserRoleEntity).save({
-		appUserId,
-		applicationId: role.applicationId,
+		appUserApplicationId: assignment.id,
 		roleId: role.id,
 	});
 }

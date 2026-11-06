@@ -15,7 +15,7 @@ import {
 	authorizationSignedByAnotherKey,
 	expiredAuthorization,
 } from '../helpers/test-auth';
-import { ErrorBody, bodyOf } from '../helpers/response-types';
+import { ErrorBody, UserWithConnectionsBody, bodyOf, dataOf } from '../helpers/response-types';
 
 describe('GET /internal-users/:id/connections (e2e)', () => {
 	let testApp: AppTestApp;
@@ -49,17 +49,20 @@ describe('GET /internal-users/:id/connections (e2e)', () => {
 		return req;
 	}
 
-	it('returns 200 with an empty list when the user has no connections', async () => {
+	it('returns 200 with the user and an empty connection list when it has no connections', async () => {
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
+		expect(bodyOf<{ ok: boolean; msg: string }>(response)).toMatchObject({
 			ok: true,
 			msg: 'Connections retrieved successfully',
-			data: [],
+		});
+		expect(dataOf<UserWithConnectionsBody>(response)).toMatchObject({
+			id: userId,
+			connections: [],
 		});
 	});
 
-	it('returns the connections with the application names', async () => {
+	it('returns the user with its connections and both applications loaded', async () => {
 		const connection = await connectInternalUser(
 			testApp.dataSource,
 			userId,
@@ -69,18 +72,16 @@ describe('GET /internal-users/:id/connections (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
-			ok: true,
-			msg: 'Connections retrieved successfully',
-			data: [
-				{
-					id: connection.id,
-					originApplicationId: iam.iamApplication.id,
-					originApplicationName: 'iam',
-					destinationApplicationId: iam.iamApplication.id,
-					destinationApplicationName: 'iam',
-				},
-			],
+		const user = dataOf<UserWithConnectionsBody>(response);
+		expect(user.id).toBe(userId);
+		expect(user.connections).toHaveLength(1);
+		expect(user.connections[0]).toMatchObject({
+			id: connection.id,
+			internalUserId: userId,
+			originApplicationId: iam.iamApplication.id,
+			destinationApplicationId: iam.iamApplication.id,
+			originApplication: { id: iam.iamApplication.id, name: 'iam' },
+			destinationApplication: { id: iam.iamApplication.id, name: 'iam' },
 		});
 	});
 
@@ -104,34 +105,22 @@ describe('GET /internal-users/:id/connections (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
-			ok: true,
-			msg: 'Connections retrieved successfully',
-			data: [
-				{
-					id: second.id,
-					originApplicationId: billing.id,
-					originApplicationName: 'billing',
-					destinationApplicationId: iam.iamApplication.id,
-					destinationApplicationName: 'iam',
-				},
-				{
-					id: first.id,
-					originApplicationId: iam.iamApplication.id,
-					originApplicationName: 'iam',
-					destinationApplicationId: billing.id,
-					destinationApplicationName: 'billing',
-				},
-			],
-		});
+		const { connections } = dataOf<UserWithConnectionsBody>(response);
+		expect(connections.map((connection) => connection.id)).toEqual([second.id, first.id]);
+		expect(
+			connections.map((connection) => [
+				connection.originApplication.name,
+				connection.destinationApplication.name,
+			]),
+		).toEqual([
+			['billing', 'iam'],
+			['iam', 'billing'],
+		]);
 	});
 
 	it('does not include connections of other users', async () => {
-		const otherId = (
-			await createInternalUser(testApp.dataSource, {
-				email: 'other@example.com',
-			})
-		).id;
+		const otherId = (await createInternalUser(testApp.dataSource, { email: 'other@example.com' }))
+			.id;
 		await connectInternalUser(
 			testApp.dataSource,
 			otherId,
@@ -141,11 +130,23 @@ describe('GET /internal-users/:id/connections (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
-			ok: true,
-			msg: 'Connections retrieved successfully',
-			data: [],
+		expect(dataOf<UserWithConnectionsBody>(response)).toMatchObject({
+			id: userId,
+			connections: [],
 		});
+	});
+
+	it('never exposes secrets', async () => {
+		await connectInternalUser(
+			testApp.dataSource,
+			userId,
+			iam.iamApplication.id,
+			iam.iamApplication.id,
+		);
+
+		const response = await send().expect(200);
+
+		expect(response.text).not.toMatch(/password|\$2[aby]\$|clienteSecret/);
 	});
 
 	describe('errors', () => {

@@ -13,9 +13,6 @@ describe('InternalUsersService.findAll', () => {
 			repository as unknown as InternalUsersRepository,
 			{} as never,
 			{} as never,
-			{} as never,
-			{} as never,
-			{} as never,
 		);
 	});
 

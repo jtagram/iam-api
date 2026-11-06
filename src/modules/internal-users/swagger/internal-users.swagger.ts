@@ -6,16 +6,14 @@ import {
 	ApiOperation,
 	ApiParam,
 } from '@nestjs/swagger';
-import { ConnectionResponse } from '../../../common/dto/connection-response.dto';
 import { ApiProtected } from '../../../common/swagger/api-protected.decorator';
 import {
 	ApiCreatedResponseBody,
 	ApiOkResponseBody,
 } from '../../../common/swagger/api-response-body.decorator';
-import { InternalUserApplicationAssignmentResponse } from '../dto/internal-user-application-assignment-response.dto';
-import { InternalUserApplicationRolesResponse } from '../dto/internal-user-application-roles-response.dto';
 import { InternalUserResponse } from '../dto/internal-user-response.dto';
-import { InternalUserRoleAssignmentResponse } from '../dto/internal-user-role-assignment-response.dto';
+import { InternalUserWithApplicationsResponse } from '../dto/internal-user-with-applications-response.dto';
+import { InternalUserWithConnectionsResponse } from '../dto/internal-user-with-connections-response.dto';
 
 const ApiUserIdParam = () =>
 	ApiParam({
@@ -75,7 +73,8 @@ export const ApiFindInternalUsersByRole = () =>
 		}),
 		ApiProtected(),
 		ApiOkResponseBody({
-			description: 'Matching internal users (empty list if none match).',
+			description:
+				'Matching internal users (empty list if none match, including an unknown application).',
 			type: InternalUserResponse,
 			isArray: true,
 			msg: 'Internal users retrieved successfully',
@@ -84,8 +83,21 @@ export const ApiFindInternalUsersByRole = () =>
 			description:
 				'Invalid query: `applicationName` (max 30 characters) or `roles` is missing or empty.',
 		}),
-		ApiNotFoundResponse({
-			description: '`Application not found`: no application has the given `applicationName`.',
+	);
+
+export const ApiFindInternalUsersWithApplications = () =>
+	applyDecorators(
+		ApiOperation({
+			summary: 'List every internal user with its assigned applications',
+			description:
+				'Returns every internal user, most recently created first, each with its application assignments, their application and the roles it holds in them; the password is never included (`applications` is empty for a user without assignments). Requires the `ADMIN` role in the iam application.',
+		}),
+		ApiProtected(),
+		ApiOkResponseBody({
+			description: 'Internal users with their applications retrieved.',
+			type: InternalUserWithApplicationsResponse,
+			isArray: true,
+			msg: 'Internal users with applications retrieved successfully',
 		}),
 	);
 
@@ -94,14 +106,13 @@ export const ApiFindInternalUserApplications = () =>
 		ApiOperation({
 			summary: 'List the applications assigned to an internal user',
 			description:
-				'Returns the applications assigned to the user, each with the roles the user holds in it. Requires the `ADMIN` role in the iam application.',
+				'Returns the internal user with its `applications` assignments (newest first), each with its application and the roles the user holds in it. Secrets are never included. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
 		ApiOkResponseBody({
-			description: 'Assigned applications with their roles.',
-			type: InternalUserApplicationRolesResponse,
-			isArray: true,
+			description: 'The user with its assigned applications and their roles.',
+			type: InternalUserWithApplicationsResponse,
 			msg: 'Assigned applications retrieved successfully',
 		}),
 		ApiBadRequestResponse({
@@ -122,8 +133,9 @@ export const ApiAssignInternalUserApplication = () =>
 		ApiUserIdParam(),
 		ApiProtected(),
 		ApiCreatedResponseBody({
-			description: 'Application assigned.',
-			type: InternalUserApplicationAssignmentResponse,
+			description:
+				'Application assigned; returns the user with its updated assignment tree (applications and their roles). Secrets are never included.',
+			type: InternalUserWithApplicationsResponse,
 			msg: 'Application assigned to internal user successfully',
 		}),
 		ApiBadRequestResponse({
@@ -148,13 +160,14 @@ export const ApiAssignInternalUserRole = () =>
 		ApiOperation({
 			summary: 'Assign a role to an internal user',
 			description:
-				'Grants the internal user a role. The application is taken from the role. Requires the `ADMIN` role in the iam application.',
+				'Grants the internal user a role. The application is taken from the role and must already be assigned to the user; the role hangs off that application assignment. Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
 		ApiCreatedResponseBody({
-			description: 'Role assigned.',
-			type: InternalUserRoleAssignmentResponse,
+			description:
+				'Role assigned; returns the user with its updated assignment tree (applications and their roles). Secrets are never included.',
+			type: InternalUserWithApplicationsResponse,
 			msg: 'Role assigned to internal user successfully',
 		}),
 		ApiBadRequestResponse({
@@ -168,7 +181,11 @@ export const ApiAssignInternalUserRole = () =>
 			description: ['Not found:', '- `Internal user not found`', '- `Role not found`'].join('\n'),
 		}),
 		ApiConflictResponse({
-			description: '`Role already assigned to this user`: the assignment already exists.',
+			description: [
+				'Conflict:',
+				'- `Application is not assigned to the user`: the application of the role must be assigned to the user first.',
+				'- `Role already assigned to this user`: the assignment already exists.',
+			].join('\n'),
 		}),
 	);
 
@@ -177,14 +194,13 @@ export const ApiFindInternalUserConnections = () =>
 		ApiOperation({
 			summary: 'List the connections of an internal user',
 			description:
-				'Returns the origin to destination application connections of the user, most recently created first. Requires the `ADMIN` role in the iam application.',
+				'Returns the user with its origin to destination application connections (newest first), each with its origin and destination application; secrets are never included (`connections` is empty for a user without connections). Requires the `ADMIN` role in the iam application.',
 		}),
 		ApiUserIdParam(),
 		ApiProtected(),
 		ApiOkResponseBody({
-			description: 'Connections of the user.',
-			type: ConnectionResponse,
-			isArray: true,
+			description: 'The user with its connections.',
+			type: InternalUserWithConnectionsResponse,
 			msg: 'Connections retrieved successfully',
 		}),
 		ApiBadRequestResponse({
@@ -205,8 +221,9 @@ export const ApiCreateInternalUserConnection = () =>
 		ApiUserIdParam(),
 		ApiProtected(),
 		ApiCreatedResponseBody({
-			description: 'Connection created.',
-			type: ConnectionResponse,
+			description:
+				'Connection created; returns the user whose `connections` holds only the created connection, with its origin and destination application. Secrets are never included.',
+			type: InternalUserWithConnectionsResponse,
 			msg: 'Connection created successfully',
 		}),
 		ApiBadRequestResponse({
@@ -215,15 +232,12 @@ export const ApiCreateInternalUserConnection = () =>
 				INVALID_ID_CASE,
 				'- The body is invalid: `originApplicationId` or `destinationApplicationId` is missing or not a positive integer.',
 				'- `Origin and destination applications must be different`',
-				'- `The user does not have this application assigned`: the origin or destination application is not assigned to the user.',
+				'- `The user does not have the origin application assigned`: also returned when no application has the given `originApplicationId`.',
+				'- `The user does not have the destination application assigned`: also returned when no application has the given `destinationApplicationId`.',
 			].join('\n'),
 		}),
 		ApiNotFoundResponse({
-			description: [
-				'Not found:',
-				'- `Internal user not found`',
-				'- `Application not found`: the origin or destination application does not exist.',
-			].join('\n'),
+			description: ['Not found:', '- `Internal user not found`'].join('\n'),
 		}),
 		ApiConflictResponse({
 			description:

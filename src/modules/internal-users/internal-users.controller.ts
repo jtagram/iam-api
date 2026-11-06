@@ -10,24 +10,22 @@ import {
 	Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { InternalUserEntity } from '../../common/database/internal-user/internal-user.entity';
 import { Role } from '../../common/database/role/role.enum';
 import { AssignApplicationDto } from '../../common/dto/assign-application.dto';
 import { AssignRoleDto } from '../../common/dto/assign-role.dto';
-import { ConnectionResponse } from '../../common/dto/connection-response.dto';
 import { CreateConnectionDto } from '../../common/dto/create-connection.dto';
 import { ResponseBody } from '../../common/dto/response-body.dto';
 import { Roles } from '../../common/guards/roles.decorator';
 import { InternalUsersService } from './internal-users.service';
 import { CreateInternalUserDto } from './dto/create-internal-user.dto';
-import { InternalUserApplicationAssignmentResponse } from './dto/internal-user-application-assignment-response.dto';
-import { InternalUserRoleAssignmentResponse } from './dto/internal-user-role-assignment-response.dto';
 import { InternalUserResponse } from './dto/internal-user-response.dto';
-import { InternalUserApplicationRolesResponse } from './dto/internal-user-application-roles-response.dto';
 import { FindInternalUsersByRoleDto } from './dto/find-internal-users-by-role.dto';
 import {
 	ApiCreateInternalUser,
 	ApiFindAllInternalUsers,
 	ApiFindInternalUsersByRole,
+	ApiFindInternalUsersWithApplications,
 	ApiFindInternalUserApplications,
 	ApiAssignInternalUserApplication,
 	ApiAssignInternalUserRole,
@@ -62,11 +60,17 @@ export class InternalUsersController {
 		return this.internalUsersService.findByApplicationAndRoles(query);
 	}
 
+	@Get('with-applications')
+	@ApiFindInternalUsersWithApplications()
+	findAllWithApplications(): Promise<ResponseBody<InternalUserEntity[]>> {
+		return this.internalUsersService.findAllWithApplications();
+	}
+
 	@Get(':id/applications')
 	@ApiFindInternalUserApplications()
 	findAssignedApplications(
 		@Param('id', ParseIntPipe) id: number,
-	): Promise<ResponseBody<InternalUserApplicationRolesResponse[]>> {
+	): Promise<ResponseBody<InternalUserEntity>> {
 		return this.internalUsersService.findAssignedApplications(id);
 	}
 
@@ -76,7 +80,7 @@ export class InternalUsersController {
 	assignApplication(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: AssignApplicationDto,
-	): Promise<ResponseBody<InternalUserApplicationAssignmentResponse>> {
+	): Promise<ResponseBody<InternalUserEntity>> {
 		return this.internalUsersService.assignApplication(id, dto);
 	}
 
@@ -86,7 +90,7 @@ export class InternalUsersController {
 	assignRole(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: AssignRoleDto,
-	): Promise<ResponseBody<InternalUserRoleAssignmentResponse>> {
+	): Promise<ResponseBody<InternalUserEntity>> {
 		return this.internalUsersService.assignRole(id, dto);
 	}
 
@@ -94,7 +98,7 @@ export class InternalUsersController {
 	@ApiFindInternalUserConnections()
 	findConnections(
 		@Param('id', ParseIntPipe) id: number,
-	): Promise<ResponseBody<ConnectionResponse[]>> {
+	): Promise<ResponseBody<InternalUserEntity>> {
 		return this.internalUsersService.findConnections(id);
 	}
 
@@ -104,7 +108,7 @@ export class InternalUsersController {
 	createConnection(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: CreateConnectionDto,
-	): Promise<ResponseBody<ConnectionResponse>> {
+	): Promise<ResponseBody<InternalUserEntity>> {
 		return this.internalUsersService.createConnection(id, dto);
 	}
 }

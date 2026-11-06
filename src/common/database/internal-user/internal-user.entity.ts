@@ -1,10 +1,14 @@
+import { Exclude } from 'class-transformer';
 import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
+import { InternalUserConnectionEntity } from '../internal-user-connection/internal-user-connection.entity';
+import { InternalUserAppEntity } from './internal-user-app.entity';
 
 @Entity({ name: 'internal_users' })
 export class InternalUserEntity {
@@ -20,6 +24,8 @@ export class InternalUserEntity {
 	@Column({ length: 30, unique: true })
 	email!: string;
 
+	// Never serialized: the global ClassSerializerInterceptor drops it from every HTTP response.
+	@Exclude({ toPlainOnly: true })
 	@Column({ length: 60 })
 	password!: string;
 
@@ -28,6 +34,12 @@ export class InternalUserEntity {
 
 	@UpdateDateColumn({ name: 'updated_at' })
 	updatedAt!: Date;
+
+	@OneToMany(() => InternalUserAppEntity, (internalUserApp) => internalUserApp.internalUser)
+	applications!: InternalUserAppEntity[];
+
+	@OneToMany(() => InternalUserConnectionEntity, (connection) => connection.internalUser)
+	connections!: InternalUserConnectionEntity[];
 
 	static builder(): InternalUserEntityBuilder {
 		return new InternalUserEntityBuilder();

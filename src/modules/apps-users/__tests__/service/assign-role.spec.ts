@@ -5,38 +5,45 @@ import { ApplicationsRepository } from '../../../../common/database/application/
 import { RolesRepository } from '../../../../common/database/role/roles.repository';
 import { AppUsersRepository } from '../../../../common/database/app-user/app-users.repository';
 import { UserRoleEntity } from '../../../../common/database/user-role/user-role.entity';
-import { UserRolesRepository } from '../../../../common/database/user-role/user-roles.repository';
 import { AppUsersService } from '../../apps-users.service';
 
 describe('AppUsersService.assignRole', () => {
-	let users: { findById: ReturnType<typeof mockFn> };
-	let roles: { findById: ReturnType<typeof mockFn> };
-	let userRoles: {
-		existsForAppUserAndRole: ReturnType<typeof mockFn>;
-		createAssignment: ReturnType<typeof mockFn>;
+	let users: {
+		findById: ReturnType<typeof mockFn>;
+		findByIdWithAssignments: ReturnType<typeof mockFn>;
+		findApplicationAssignment: ReturnType<typeof mockFn>;
+		hasRole: ReturnType<typeof mockFn>;
+		addRole: ReturnType<typeof mockFn>;
 	};
+	let roles: { findById: ReturnType<typeof mockFn> };
 	let service: AppUsersService;
+	const tree = { id: 1, applications: [{ id: 70, applicationId: 5 }] };
 	const dto = { roleId: 9 };
 
 	beforeEach(() => {
-		users = { findById: mockFn() };
-		roles = { findById: mockFn() };
-		userRoles = {
-			existsForAppUserAndRole: mockFn(),
-			createAssignment: mockFn(),
+		users = {
+			findById: mockFn(),
+			findByIdWithAssignments: mockFn(),
+			findApplicationAssignment: mockFn(),
+			hasRole: mockFn(),
+			addRole: mockFn(),
 		};
+		roles = { findById: mockFn() };
 		service = new AppUsersService(
 			users as unknown as AppUsersRepository,
 			{} as unknown as ApplicationsRepository,
 			roles as unknown as RolesRepository,
-			{} as never,
-			userRoles as unknown as UserRolesRepository,
-			{} as never,
 		);
 		users.findById.mockResolvedValue({ id: 1 });
+		users.findByIdWithAssignments.mockResolvedValue(tree);
 		roles.findById.mockResolvedValue({ id: 9, applicationId: 5 });
-		userRoles.existsForAppUserAndRole.mockResolvedValue(false);
-		userRoles.createAssignment.mockImplementation((entity: UserRoleEntity) =>
+		users.findApplicationAssignment.mockResolvedValue({
+			id: 30,
+			appUserId: 1,
+			applicationId: 5,
+		});
+		users.hasRole.mockResolvedValue(false);
+		users.addRole.mockImplementation((entity: UserRoleEntity) =>
 			Promise.resolve(Object.assign(entity, { id: 80 })),
 		);
 	});
@@ -57,46 +64,63 @@ describe('AppUsersService.assignRole', () => {
 			new NotFoundException('Role not found'),
 		);
 		expect(roles.findById).toHaveBeenCalledWith(9);
-		expect(userRoles.createAssignment).not.toHaveBeenCalled();
+		expect(users.addRole).not.toHaveBeenCalled();
 	});
 
 	it('throws Conflict when the user already has the role', async () => {
-		userRoles.existsForAppUserAndRole.mockResolvedValue(true);
+		users.hasRole.mockResolvedValue(true);
 
 		await expect(service.assignRole(1, dto)).rejects.toThrow(
 			new ConflictException('Role already assigned to this user'),
 		);
-		expect(userRoles.existsForAppUserAndRole).toHaveBeenCalledWith(1, 9);
-		expect(userRoles.createAssignment).not.toHaveBeenCalled();
+		expect(users.hasRole).toHaveBeenCalledWith(1, 9);
+		expect(users.addRole).not.toHaveBeenCalled();
 	});
 
-	it('copies the applicationId from the role, never from the caller', async () => {
+	it('throws Conflict when the role application is not assigned to the user', async () => {
+		users.findApplicationAssignment.mockResolvedValue(null);
+
+		await expect(service.assignRole(1, dto)).rejects.toThrow(
+			new ConflictException('Application is not assigned to the user'),
+		);
+		expect(users.findApplicationAssignment).toHaveBeenCalledWith(1, 5);
+		expect(users.addRole).not.toHaveBeenCalled();
+	});
+
+	it('hangs the role off the assignment of the role application, never off a caller value', async () => {
 		await service.assignRole(1, { roleId: 9, applicationId: 777 } as never);
 
-		const entity = userRoles.createAssignment.mock.calls[0][0] as UserRoleEntity;
+		const entity = users.addRole.mock.calls[0][0] as UserRoleEntity;
 		expect(entity).toBeInstanceOf(UserRoleEntity);
-		expect(entity).toMatchObject({
-			appUserId: 1,
-			roleId: 9,
-			applicationId: 5,
-		});
+		expect(entity).toMatchObject({ appUserApplicationId: 30, roleId: 9 });
+		expect(users.findApplicationAssignment).toHaveBeenCalledWith(1, 5);
 	});
 
-	it('does not require the application to be assigned to the user first (current behavior)', async () => {
-		await expect(service.assignRole(1, dto)).resolves.toBeDefined();
-	});
-
-	it('returns the created assignment', async () => {
+	it('reloads the user with its assignments after creating and returns that tree', async () => {
 		await expect(service.assignRole(1, dto)).resolves.toEqual({
 			ok: true,
 			msg: 'Role assigned to user successfully',
-			data: { id: 80, appUserId: 1, roleId: 9, applicationId: 5 },
+			data: tree,
 		});
+
+		expect(users.findByIdWithAssignments).toHaveBeenCalledWith(1);
+		expect(users.findByIdWithAssignments).toHaveBeenCalledTimes(1);
+		expect(users.addRole.mock.invocationCallOrder[0]).toBeLessThan(
+			users.findByIdWithAssignments.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('throws NotFound when the reload returns null', async () => {
+		users.findByIdWithAssignments.mockResolvedValue(null);
+
+		await expect(service.assignRole(1, dto)).rejects.toThrow(
+			new NotFoundException('Application user not found'),
+		);
 	});
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		userRoles.createAssignment.mockRejectedValue(failure);
+		users.addRole.mockRejectedValue(failure);
 
 		await expect(service.assignRole(1, dto)).rejects.toBe(failure);
 	});

@@ -10,11 +10,6 @@ export class InternalUserAppsRepository {
 		private readonly repository: Repository<InternalUserAppEntity>,
 	) {}
 
-	createAssignment(entity: InternalUserAppEntity): Promise<InternalUserAppEntity> {
-		const created = this.repository.create(entity);
-		return this.repository.save(created);
-	}
-
 	existsForInternalUserAndApplication(
 		internalUserId: number,
 		applicationId: number,
@@ -22,9 +17,5 @@ export class InternalUserAppsRepository {
 		return this.repository.exists({
 			where: { internalUserId, applicationId },
 		});
-	}
-
-	findAllByInternalUserId(internalUserId: number): Promise<InternalUserAppEntity[]> {
-		return this.repository.find({ where: { internalUserId } });
 	}
 }

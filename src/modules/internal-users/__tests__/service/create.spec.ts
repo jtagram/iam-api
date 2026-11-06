@@ -26,9 +26,6 @@ describe('InternalUsersService.create', () => {
 			repository as unknown as InternalUsersRepository,
 			{} as never,
 			{} as never,
-			{} as never,
-			{} as never,
-			{} as never,
 		);
 		repository.findByEmail.mockResolvedValue(null);
 		repository.createInternalUser.mockImplementation((entity: InternalUserEntity) =>

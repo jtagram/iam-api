@@ -4,8 +4,8 @@ import { InternalUsersController } from '../../internal-users.controller';
 import { prototypeMethod } from '../../../../../test/helpers/mocks';
 
 describe('InternalUsersController route order', () => {
-	it('declares GET by-role before any ":id" route so it is not captured as an id', () => {
-		const order = Object.getOwnPropertyNames(InternalUsersController.prototype)
+	const routes = () =>
+		Object.getOwnPropertyNames(InternalUsersController.prototype)
 			.filter((name) => name !== 'constructor')
 			.map((name) => ({
 				name,
@@ -14,10 +14,16 @@ describe('InternalUsersController route order', () => {
 					prototypeMethod(InternalUsersController.prototype, name as 'create'),
 				) as string,
 			}));
-		const byRole = order.findIndex((route) => route.path === 'by-role');
-		const firstIdRoute = order.findIndex((route) => route.path.startsWith(':id'));
 
-		expect(byRole).toBeGreaterThanOrEqual(0);
-		expect(byRole).toBeLessThan(firstIdRoute);
-	});
+	it.each(['by-role', 'with-applications'])(
+		'declares GET %s before any ":id" route so it is not captured as an id',
+		(staticPath) => {
+			const order = routes();
+			const staticIndex = order.findIndex((route) => route.path === staticPath);
+			const firstIdRoute = order.findIndex((route) => route.path.startsWith(':id'));
+
+			expect(staticIndex).toBeGreaterThanOrEqual(0);
+			expect(staticIndex).toBeLessThan(firstIdRoute);
+		},
+	);
 });

@@ -13,9 +13,6 @@ describe('AppUsersService.findAll', () => {
 			repository as unknown as AppUsersRepository,
 			{} as never,
 			{} as never,
-			{} as never,
-			{} as never,
-			{} as never,
 		);
 	});
 

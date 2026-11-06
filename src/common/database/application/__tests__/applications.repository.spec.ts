@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DataSource, Repository } from 'typeorm';
+import { clearAllTables } from '../../../../../test/helpers/clear-tables';
+import { ENTITIES } from '../../../../../test/helpers/entities';
+import { createApplication, createRole } from '../../../../../test/helpers/seed';
 import { createInMemoryDataSource } from '../../../../../test/helpers/in-memory-db';
+import { RoleEntity } from '../../role/role.entity';
 import { ApplicationEntity } from '../application.entity';
 import { ApplicationsRepository } from '../applications.repository';
 
@@ -14,7 +18,7 @@ describe('ApplicationsRepository (in-memory db)', () => {
 	let repository: ApplicationsRepository;
 
 	beforeAll(async () => {
-		dataSource = await createInMemoryDataSource([ApplicationEntity]);
+		dataSource = await createInMemoryDataSource(ENTITIES);
 	});
 
 	afterAll(async () => {
@@ -24,7 +28,7 @@ describe('ApplicationsRepository (in-memory db)', () => {
 	beforeEach(async () => {
 		jest.restoreAllMocks();
 		typeormRepository = dataSource.getRepository(ApplicationEntity);
-		await typeormRepository.clear();
+		await clearAllTables(dataSource);
 		repository = new ApplicationsRepository(typeormRepository);
 	});
 
@@ -153,6 +157,47 @@ describe('ApplicationsRepository (in-memory db)', () => {
 			await expect(repository.findByIds([])).resolves.toEqual([]);
 
 			expect(findSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findAllWithRolesOrderedByCreatedAtDesc', () => {
+		it('returns every application with its roles, newest first at both levels', async () => {
+			const older = await createApplication(dataSource, 'older');
+			const newer = await createApplication(dataSource, 'newer');
+			const olderFirstRole = await createRole(dataSource, older.id, 'FIRST');
+			const olderSecondRole = await createRole(dataSource, older.id, 'SECOND');
+			const newerRole = await createRole(dataSource, newer.id, 'ONLY');
+			await typeormRepository.update(older.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
+			await typeormRepository.update(newer.id, { createdAt: new Date('2024-02-01T00:00:00Z') });
+			const roleRepository = dataSource.getRepository(RoleEntity);
+			await roleRepository.update(olderFirstRole.id, {
+				createdAt: new Date('2024-01-01T00:00:00Z'),
+			});
+			await roleRepository.update(olderSecondRole.id, {
+				createdAt: new Date('2024-03-01T00:00:00Z'),
+			});
+
+			const found = await repository.findAllWithRolesOrderedByCreatedAtDesc();
+
+			expect(found.map((application) => application.id)).toEqual([newer.id, older.id]);
+			expect(found[0].roles.map((role) => role.id)).toEqual([newerRole.id]);
+			expect(found[1].roles.map((role) => role.id)).toEqual([
+				olderSecondRole.id,
+				olderFirstRole.id,
+			]);
+		});
+
+		it('returns an application without roles with an empty roles list', async () => {
+			await createApplication(dataSource, 'empty');
+
+			const found = await repository.findAllWithRolesOrderedByCreatedAtDesc();
+
+			expect(found).toHaveLength(1);
+			expect(found[0].roles).toEqual([]);
+		});
+
+		it('returns an empty list when there are no applications', async () => {
+			await expect(repository.findAllWithRolesOrderedByCreatedAtDesc()).resolves.toEqual([]);
 		});
 	});
 });

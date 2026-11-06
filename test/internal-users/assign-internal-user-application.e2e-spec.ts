@@ -1,5 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
-import { createInternalUser, SeededIam, seedIamAdmin } from '../helpers/seed';
+import {
+	createApplication,
+	createInternalUser,
+	grantInternalUserApplication,
+	SeededIam,
+	seedIamAdmin,
+} from '../helpers/seed';
 import { InternalUserAppEntity } from '../../src/common/database/internal-user/internal-user-app.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import {
@@ -60,26 +66,52 @@ describe('POST /internal-users/:id/applications (e2e)', () => {
 	}
 
 	describe('assignment', () => {
-		it('returns 201 with the created assignment', async () => {
+		it('returns 201 with the user and its assignment tree', async () => {
 			const response = await send().expect(201);
 
-			expect(response.body).toEqual({
+			expect(response.body).toMatchObject({
 				ok: true,
 				msg: 'Application assigned to internal user successfully',
 				data: {
-					id: expect.any(Number),
-					internalUserId: userId,
-					applicationId: iam.iamApplication.id,
+					id: userId,
+					email: 'user@example.com',
+					applications: [
+						{
+							internalUserId: userId,
+							applicationId: iam.iamApplication.id,
+							application: { id: iam.iamApplication.id, name: 'iam' },
+							roles: [],
+						},
+					],
 				},
 			});
 		});
 
-		it('persists the assignment in the database', async () => {
+		it('lists the newly assigned application among the previous ones, newest first', async () => {
+			const ticketHub = await createApplication(testApp.dataSource, 'ticket-hub');
+			await grantInternalUserApplication(testApp.dataSource, userId, ticketHub.id);
+
 			const response = await send().expect(201);
+
+			const { applications } = dataOf<{ applications: { applicationId: number }[] }>(response);
+			expect(applications.map((assignment) => assignment.applicationId)).toEqual([
+				ticketHub.id,
+				iam.iamApplication.id,
+			]);
+		});
+
+		it('never exposes the password in the response', async () => {
+			const response = await send().expect(201);
+
+			expect(response.text).not.toMatch(/password|\$2[aby]\$|clienteSecret/);
+		});
+
+		it('persists the assignment in the database', async () => {
+			await send().expect(201);
 
 			const row = await testApp.dataSource
 				.getRepository(InternalUserAppEntity)
-				.findOneByOrFail({ id: dataOf<InternalUserAppEntity>(response).id });
+				.findOneByOrFail({ internalUserId: userId, applicationId: iam.iamApplication.id });
 			expect(row.internalUserId).toBe(userId);
 			expect(row.applicationId).toBe(iam.iamApplication.id);
 		});

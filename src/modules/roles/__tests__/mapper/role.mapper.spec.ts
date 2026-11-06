@@ -66,36 +66,37 @@ describe('RoleMapper.toCreateResponse', () => {
 });
 
 describe('RoleMapper.toApplicationRolesResponse', () => {
-	const application = Object.assign(new ApplicationEntity(), {
-		id: 1,
-		name: 'iam',
-		description: 'Identity',
-	});
+	const role = (id: number, name: string, description: string) =>
+		Object.assign(new RoleEntity(), { id, applicationId: 1, name, description });
 
-	it('keeps only the roles that belong to the application', () => {
-		const own = Object.assign(new RoleEntity(), {
+	it('maps the application with the roles loaded on it, keeping their order', () => {
+		const application = Object.assign(new ApplicationEntity(), {
 			id: 1,
-			applicationId: 1,
-			name: 'ADMIN',
-			description: 'a',
-		});
-		const other = Object.assign(new RoleEntity(), {
-			id: 2,
-			applicationId: 2,
-			name: 'PAYER',
-			description: 'b',
+			name: 'iam',
+			description: 'Identity',
+			roles: [role(2, 'VIEWER', 'b'), role(1, 'ADMIN', 'a')],
 		});
 
-		expect(RoleMapper.toApplicationRolesResponse(application, [own, other])).toEqual({
+		expect(RoleMapper.toApplicationRolesResponse(application)).toEqual({
 			applicationId: 1,
 			applicationName: 'iam',
 			applicationDescription: 'Identity',
-			roles: [{ id: 1, name: 'ADMIN', description: 'a' }],
+			roles: [
+				{ id: 2, name: 'VIEWER', description: 'b' },
+				{ id: 1, name: 'ADMIN', description: 'a' },
+			],
 		});
 	});
 
 	it('returns an empty roles list when the application has no roles', () => {
-		expect(RoleMapper.toApplicationRolesResponse(application, [])).toEqual({
+		const application = Object.assign(new ApplicationEntity(), {
+			id: 1,
+			name: 'iam',
+			description: 'Identity',
+			roles: [],
+		});
+
+		expect(RoleMapper.toApplicationRolesResponse(application)).toEqual({
 			applicationId: 1,
 			applicationName: 'iam',
 			applicationDescription: 'Identity',
@@ -105,27 +106,21 @@ describe('RoleMapper.toApplicationRolesResponse', () => {
 });
 
 describe('RoleMapper.toApplicationRoleItems', () => {
-	it('keeps only the roles of the given application as items', () => {
-		const own = Object.assign(new RoleEntity(), {
+	it('maps each role to an item without the application id', () => {
+		const role = Object.assign(new RoleEntity(), {
 			id: 1,
 			applicationId: 1,
 			name: 'ADMIN',
 			description: 'a',
 		});
-		const other = Object.assign(new RoleEntity(), {
-			id: 2,
-			applicationId: 2,
-			name: 'PAYER',
-			description: 'b',
-		});
 
-		expect(RoleMapper.toApplicationRoleItems([own, other], 1)).toEqual([
+		expect(RoleMapper.toApplicationRoleItems([role])).toEqual([
 			{ id: 1, name: 'ADMIN', description: 'a' },
 		]);
 	});
 
-	it('returns an empty list when no role belongs to the application', () => {
-		expect(RoleMapper.toApplicationRoleItems([], 1)).toEqual([]);
+	it('returns an empty list when there are no roles', () => {
+		expect(RoleMapper.toApplicationRoleItems([])).toEqual([]);
 	});
 });
 

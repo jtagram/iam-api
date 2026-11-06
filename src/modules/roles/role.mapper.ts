@@ -42,29 +42,21 @@ export class RoleMapper {
 		);
 	}
 
-	static toApplicationRolesResponse(
-		application: ApplicationEntity,
-		roles: RoleEntity[],
-	): ApplicationRolesResponse {
+	static toApplicationRolesResponse(application: ApplicationEntity): ApplicationRolesResponse {
 		return {
 			applicationId: application.id,
 			applicationName: application.name,
 			applicationDescription: application.description,
-			roles: RoleMapper.toApplicationRoleItems(roles, application.id),
+			roles: RoleMapper.toApplicationRoleItems(application.roles),
 		};
 	}
 
-	static toApplicationRoleItems(
-		roles: RoleEntity[],
-		applicationId: number,
-	): ApplicationRoleItemResponse[] {
-		return roles
-			.filter((role) => role.applicationId === applicationId)
-			.map((role) => ({
-				id: role.id,
-				name: role.name,
-				description: role.description,
-			}));
+	static toApplicationRoleItems(roles: RoleEntity[]): ApplicationRoleItemResponse[] {
+		return roles.map((role) => ({
+			id: role.id,
+			name: role.name,
+			description: role.description,
+		}));
 	}
 
 	static toFindAllGroupedByApplicationResponse(

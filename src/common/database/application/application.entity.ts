@@ -2,9 +2,13 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
 } from 'typeorm';
+import { InternalUserAppEntity } from '../internal-user/internal-user-app.entity';
+import { RoleEntity } from '../role/role.entity';
+import { UserAppEntity } from '../user-application/user-app.entity';
 
 @Entity({ name: 'apps_applications' })
 export class ApplicationEntity {
@@ -22,6 +26,15 @@ export class ApplicationEntity {
 
 	@UpdateDateColumn({ name: 'updated_at' })
 	updatedAt!: Date;
+
+	@OneToMany(() => RoleEntity, (role) => role.application)
+	roles!: RoleEntity[];
+
+	@OneToMany(() => UserAppEntity, (userApp) => userApp.application)
+	appsUsers!: UserAppEntity[];
+
+	@OneToMany(() => InternalUserAppEntity, (internalUserApp) => internalUserApp.application)
+	internalUsers!: InternalUserAppEntity[];
 
 	static builder(): ApplicationEntityBuilder {
 		return new ApplicationEntityBuilder();

@@ -7,7 +7,7 @@ import {
 	seedIamAdmin,
 } from '../helpers/seed';
 import { AppUserConnectionEntity } from '../../src/common/database/app-user-connection/app-user-connection.entity';
-import { AppUserConnectionsRepository } from '../../src/common/database/app-user-connection/app-user-connections.repository';
+import { AppUsersRepository } from '../../src/common/database/app-user/app-users.repository';
 import { createBarrier } from '../helpers/concurrency';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import {
@@ -17,8 +17,7 @@ import {
 	authorizationSignedByAnotherKey,
 	expiredAuthorization,
 } from '../helpers/test-auth';
-import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
-import { ConnectionResponse } from '../../src/common/dto/connection-response.dto';
+import { bodyOf, dataOf, ErrorBody, UserWithConnectionsBody } from '../helpers/response-types';
 import { prototypeMethod } from '../helpers/mocks';
 
 describe('POST /apps-users/:id/connections (e2e)', () => {
@@ -74,28 +73,60 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 	}
 
 	describe('creation', () => {
-		it('returns 201 with the created connection and the application names', async () => {
+		it('returns 201 with the user and its connections, both applications loaded', async () => {
 			const response = await send().expect(201);
 
-			expect(response.body).toEqual({
+			expect(bodyOf<{ ok: boolean; msg: string }>(response)).toMatchObject({
 				ok: true,
 				msg: 'Connection created successfully',
-				data: {
-					id: expect.any(Number),
-					originApplicationId: iam.iamApplication.id,
-					originApplicationName: 'iam',
-					destinationApplicationId: billingId,
-					destinationApplicationName: 'billing',
-				},
 			});
+			const user = dataOf<UserWithConnectionsBody>(response);
+			expect(user.id).toBe(userId);
+			const created = user.connections.find(
+				(connection) => connection.destinationApplicationId === billingId,
+			);
+			expect(created).toMatchObject({
+				id: expect.any(Number),
+				appUserId: userId,
+				originApplicationId: iam.iamApplication.id,
+				originApplication: { id: iam.iamApplication.id, name: 'iam' },
+				destinationApplication: { id: billingId, name: 'billing' },
+			});
+		});
+
+		it('returns only the connection just created, even when the user already had others', async () => {
+			const hub = await createApplication(testApp.dataSource, 'ticket-hub');
+			await grantAppUserApplication(testApp.dataSource, userId, hub.id);
+			await send().expect(201);
+
+			const second = await send(
+				adminAuthorization(),
+				validBody({ destinationApplicationId: hub.id }),
+			).expect(201);
+
+			const user = dataOf<UserWithConnectionsBody>(second);
+			expect(user.connections).toHaveLength(1);
+			expect(user.connections[0].originApplication.name).toBe('iam');
+			expect(user.connections[0].destinationApplication.name).toBe('ticket-hub');
+			expect(second.text).not.toMatch(/password|clienteSecret/);
+			expect(await connectionCount()).toBe(2);
+		});
+
+		it('never exposes secrets', async () => {
+			const response = await send().expect(201);
+
+			expect(response.text).not.toMatch(/password|\$2[aby]\$|clienteSecret/);
 		});
 
 		it('persists the connection in the database', async () => {
 			const response = await send().expect(201);
 
+			const created = dataOf<UserWithConnectionsBody>(response).connections.find(
+				(connection) => connection.destinationApplicationId === billingId,
+			);
 			const row = await testApp.dataSource
 				.getRepository(AppUserConnectionEntity)
-				.findOneByOrFail({ id: dataOf<ConnectionResponse>(response).id });
+				.findOneByOrFail({ id: created?.id as number });
 			expect(row.appUserId).toBe(userId);
 			expect(row.originApplicationId).toBe(iam.iamApplication.id);
 			expect(row.destinationApplicationId).toBe(billingId);
@@ -179,7 +210,7 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 			).expect(400);
 
 			expect(bodyOf<ErrorBody>(response).msg).toBe(
-				'The user does not have this application assigned',
+				'The user does not have the origin application assigned',
 			);
 			expect(await connectionCount()).toBe(0);
 		});
@@ -193,9 +224,23 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 			).expect(400);
 
 			expect(bodyOf<ErrorBody>(response).msg).toBe(
-				'The user does not have this application assigned',
+				'The user does not have the destination application assigned',
 			);
 			expect(await connectionCount()).toBe(0);
+		});
+
+		it('reports the origin first when neither application is assigned to the user', async () => {
+			const hub = await createApplication(testApp.dataSource, 'ticket-hub');
+			const other = await createApplication(testApp.dataSource, 'other-app');
+
+			const response = await send(
+				adminAuthorization(),
+				validBody({ originApplicationId: hub.id, destinationApplicationId: other.id }),
+			).expect(400);
+
+			expect(bodyOf<ErrorBody>(response).msg).toBe(
+				'The user does not have the origin application assigned',
+			);
 		});
 	});
 
@@ -214,18 +259,31 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 			).expect(404);
 		});
 
-		it('returns 404 when the origin application does not exist', async () => {
+		it('reports a non-existent origin application as not assigned to the user', async () => {
 			const response = await send(
 				adminAuthorization(),
 				validBody({ originApplicationId: 999999 }),
-			).expect(404);
+			).expect(400);
 
-			expect(response.body).toEqual({ ok: false, msg: 'Application not found', data: null });
+			expect(response.body).toEqual({
+				ok: false,
+				msg: 'The user does not have the origin application assigned',
+				data: null,
+			});
+			expect(await connectionCount()).toBe(0);
 		});
 
-		it('returns 404 when the destination application does not exist', async () => {
-			await send(adminAuthorization(), validBody({ destinationApplicationId: 999999 })).expect(404);
+		it('reports a non-existent destination application as not assigned to the user', async () => {
+			const response = await send(
+				adminAuthorization(),
+				validBody({ destinationApplicationId: 999999 }),
+			).expect(400);
 
+			expect(response.body).toEqual({
+				ok: false,
+				msg: 'The user does not have the destination application assigned',
+				data: null,
+			});
 			expect(await connectionCount()).toBe(0);
 		});
 	});
@@ -256,17 +314,14 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 			expect(await connectionCount()).toBe(2);
 		});
 
-		it('creates two identical rows when the same connection is requested concurrently, because nothing enforces uniqueness in the database (documents current behavior)', async () => {
+		it('stores a single row and fails the loser with 500 when the same connection is requested concurrently, because the database unique constraint is the last line of defense', async () => {
 			const barrier = createBarrier(2);
-			const original = prototypeMethod(
-				AppUserConnectionsRepository.prototype,
-				'existsForAppUserAndApplications',
-			);
+			const original = prototypeMethod(AppUsersRepository.prototype, 'hasConnection');
 			const spy = jest
-				.spyOn(AppUserConnectionsRepository.prototype, 'existsForAppUserAndApplications')
+				.spyOn(AppUsersRepository.prototype, 'hasConnection')
 				.mockImplementation(async function (
-					this: AppUserConnectionsRepository,
-					...args: Parameters<AppUserConnectionsRepository['existsForAppUserAndApplications']>
+					this: AppUsersRepository,
+					...args: Parameters<AppUsersRepository['hasConnection']>
 				) {
 					await barrier.arrive();
 					return Reflect.apply(original, this, args);
@@ -275,8 +330,8 @@ describe('POST /apps-users/:id/connections (e2e)', () => {
 			try {
 				const [first, second] = await Promise.all([send(), send()]);
 
-				expect([first.status, second.status]).toEqual([201, 201]);
-				expect(await connectionCount()).toBe(2);
+				expect([first.status, second.status].sort()).toEqual([201, 500]);
+				expect(await connectionCount()).toBe(1);
 			} finally {
 				spy.mockRestore();
 			}

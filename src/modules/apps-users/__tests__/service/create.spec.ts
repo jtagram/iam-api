@@ -22,9 +22,6 @@ describe('AppUsersService.create', () => {
 			repository as unknown as AppUsersRepository,
 			{} as never,
 			{} as never,
-			{} as never,
-			{} as never,
-			{} as never,
 		);
 		jest.spyOn(CredentialGenerator, 'generateClienteId').mockReturnValue('cid-123456789012');
 		jest.spyOn(CredentialGenerator, 'generateClienteSecret').mockReturnValue('plain-secret');

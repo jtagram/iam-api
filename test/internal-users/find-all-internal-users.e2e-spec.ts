@@ -84,7 +84,7 @@ describe('GET /internal-users (e2e)', () => {
 	});
 
 	it('returns an empty array when there are no internal users', async () => {
-		await testApp.dataSource.getRepository(InternalUserEntity).clear();
+		await testApp.resetTables();
 
 		const response = await send().expect(200);
 

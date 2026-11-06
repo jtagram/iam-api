@@ -51,13 +51,10 @@ export class RolesService {
 	}
 
 	async findAllGroupedByApplication(): Promise<ResponseBody<ApplicationRolesResponse[]>> {
-		const [applications, roles] = await Promise.all([
-			this.applicationsRepository.findAllOrderedByCreatedAtDesc(),
-			this.rolesRepository.findAllOrderedByCreatedAtDesc(),
-		]);
+		const applications = await this.applicationsRepository.findAllWithRolesOrderedByCreatedAtDesc();
 
 		const applicationsRoles = applications.map((application) =>
-			RoleMapper.toApplicationRolesResponse(application, roles),
+			RoleMapper.toApplicationRolesResponse(application),
 		);
 
 		return RoleMapper.toFindAllGroupedByApplicationResponse(applicationsRoles);

@@ -2,9 +2,14 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	JoinColumn,
+	ManyToOne,
 	PrimaryGeneratedColumn,
+	Unique,
 	UpdateDateColumn,
 } from 'typeorm';
+import { ApplicationEntity } from '../application/application.entity';
+import { AppUserEntity } from '../app-user/app-user.entity';
 
 /**
  * One allowed `origin -> destination` application pair for an application
@@ -12,6 +17,7 @@ import {
  * destinations.
  */
 @Entity({ name: 'apps_users_connections' })
+@Unique(['appUserId', 'originApplicationId', 'destinationApplicationId'])
 export class AppUserConnectionEntity {
 	@PrimaryGeneratedColumn()
 	id!: number;
@@ -30,4 +36,16 @@ export class AppUserConnectionEntity {
 
 	@UpdateDateColumn({ name: 'updated_at' })
 	updatedAt!: Date;
+
+	@ManyToOne(() => AppUserEntity, (appUser) => appUser.connections)
+	@JoinColumn({ name: 'app_user_id' })
+	appUser!: AppUserEntity;
+
+	@ManyToOne(() => ApplicationEntity)
+	@JoinColumn({ name: 'origin_application_id' })
+	originApplication!: ApplicationEntity;
+
+	@ManyToOne(() => ApplicationEntity)
+	@JoinColumn({ name: 'destination_application_id' })
+	destinationApplication!: ApplicationEntity;
 }

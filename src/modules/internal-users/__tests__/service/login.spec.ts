@@ -7,7 +7,6 @@ import { mockFn } from '../../../../../test/helpers/mocks';
 import { generateRsaKeyPair, RsaKeyPair } from '../../../../../test/helpers/rsa-keys';
 import { ApplicationsRepository } from '../../../../common/database/application/applications.repository';
 import { InternalUserAppsRepository } from '../../../../common/database/internal-user/internal-user-apps.repository';
-import { InternalUserConnectionsRepository } from '../../../../common/database/internal-user-connection/internal-user-connections.repository';
 import { InternalUsersRepository } from '../../../../common/database/internal-user/internal-users.repository';
 import { InternalUserRolesRepository } from '../../../../common/database/internal-user/internal-user-roles.repository';
 import { RolesRepository } from '../../../../common/database/role/roles.repository';
@@ -22,13 +21,10 @@ const TARGET = 'ticket-hub';
 describe('InternalUsersLoginService.login', () => {
 	let keys: RsaKeyPair;
 	let secretHash: string;
-	let users: { findByEmail: ReturnType<typeof mockFn> };
+	let users: { findByEmail: ReturnType<typeof mockFn>; hasConnection: ReturnType<typeof mockFn> };
 	let applications: { findByName: ReturnType<typeof mockFn> };
 	let userApps: {
 		existsForInternalUserAndApplication: ReturnType<typeof mockFn>;
-	};
-	let connections: {
-		existsForInternalUserAndApplications: ReturnType<typeof mockFn>;
 	};
 	let userRoles: {
 		findRoleIdsForInternalUserAndApplication: ReturnType<typeof mockFn>;
@@ -46,10 +42,9 @@ describe('InternalUsersLoginService.login', () => {
 	});
 
 	beforeEach(() => {
-		users = { findByEmail: mockFn() };
+		users = { findByEmail: mockFn(), hasConnection: mockFn() };
 		applications = { findByName: mockFn() };
 		userApps = { existsForInternalUserAndApplication: mockFn() };
-		connections = { existsForInternalUserAndApplications: mockFn() };
 		userRoles = { findRoleIdsForInternalUserAndApplication: mockFn() };
 		roles = { findByIds: mockFn() };
 		config = { get: mockFn() };
@@ -62,7 +57,6 @@ describe('InternalUsersLoginService.login', () => {
 			users as unknown as InternalUsersRepository,
 			applications as unknown as ApplicationsRepository,
 			userApps as unknown as InternalUserAppsRepository,
-			connections as unknown as InternalUserConnectionsRepository,
 			userRoles as unknown as InternalUserRolesRepository,
 			roles as unknown as RolesRepository,
 			jwtService,
@@ -84,7 +78,7 @@ describe('InternalUsersLoginService.login', () => {
 			),
 		);
 		userApps.existsForInternalUserAndApplication.mockResolvedValue(true);
-		connections.existsForInternalUserAndApplications.mockResolvedValue(true);
+		users.hasConnection.mockResolvedValue(true);
 		userRoles.findRoleIdsForInternalUserAndApplication.mockResolvedValue([100, 101]);
 		roles.findByIds.mockResolvedValue([
 			{ id: 100, applicationId: 20, name: 'ADMIN', description: 'Admin' },
@@ -178,12 +172,12 @@ describe('InternalUsersLoginService.login', () => {
 		});
 
 		it('throws Forbidden when there is no connection from origin to target', async () => {
-			connections.existsForInternalUserAndApplications.mockResolvedValue(false);
+			users.hasConnection.mockResolvedValue(false);
 
 			await expect(service.login(dto, ORIGIN, TARGET)).rejects.toThrow(
 				new ForbiddenException('No connection allowed between these applications'),
 			);
-			expect(connections.existsForInternalUserAndApplications).toHaveBeenCalledWith(1, 10, 20);
+			expect(users.hasConnection).toHaveBeenCalledWith(1, 10, 20);
 		});
 
 		it('throws Forbidden when the user has no role in the target application', async () => {

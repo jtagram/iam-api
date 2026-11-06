@@ -1,6 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
-import { createAppUser, SeededIam, seedIamAdmin } from '../helpers/seed';
+import {
+	createApplication,
+	createAppUser,
+	createRole,
+	grantAppUserApplication,
+	SeededIam,
+	seedIamAdmin,
+} from '../helpers/seed';
 import { UserRoleEntity } from '../../src/common/database/user-role/user-role.entity';
+import { UserAppEntity } from '../../src/common/database/user-application/user-app.entity';
 import { AppTestApp, createAppTestApp } from '../helpers/app-test-app';
 import {
 	adminAuthorization,
@@ -23,6 +31,7 @@ describe('POST /apps-users/:id/roles (e2e)', () => {
 		await testApp.resetTables();
 		iam = await seedIamAdmin(testApp.dataSource);
 		userId = (await createAppUser(testApp.dataSource)).entity.id;
+		await grantAppUserApplication(testApp.dataSource, userId, iam.iamApplication.id);
 		baseline = await testApp.dataSource.getRepository(UserRoleEntity).count();
 	});
 
@@ -56,30 +65,44 @@ describe('POST /apps-users/:id/roles (e2e)', () => {
 	}
 
 	describe('assignment', () => {
-		it('returns 201 with the created assignment', async () => {
+		it('returns 201 with the user and its assignment tree', async () => {
 			const response = await send().expect(201);
 
-			expect(response.body).toEqual({
+			expect(response.body).toMatchObject({
 				ok: true,
 				msg: 'Role assigned to user successfully',
 				data: {
-					id: expect.any(Number),
-					appUserId: userId,
-					applicationId: iam.iamApplication.id,
-					roleId: iam.adminRole.id,
+					id: userId,
+					applications: [
+						{
+							appUserId: userId,
+							applicationId: iam.iamApplication.id,
+							application: { id: iam.iamApplication.id, name: 'iam' },
+							roles: [{ roleId: iam.adminRole.id, role: { id: iam.adminRole.id, name: 'ADMIN' } }],
+						},
+					],
 				},
 			});
 		});
 
-		it('persists the assignment copying the applicationId from the role', async () => {
+		it('never exposes the client secret in the response', async () => {
 			const response = await send().expect(201);
 
-			const row = await testApp.dataSource
-				.getRepository(UserRoleEntity)
-				.findOneByOrFail({ id: dataOf<UserRoleEntity>(response).id });
-			expect(row.appUserId).toBe(userId);
+			expect(response.text).not.toMatch(/password|\$2[aby]\$|clienteSecret/);
+		});
+
+		it('persists the role under the user assignment of the role application', async () => {
+			await send().expect(201);
+
+			const row = await testApp.dataSource.getRepository(UserRoleEntity).findOneOrFail({
+				where: { roleId: iam.adminRole.id, appUserApplication: { appUserId: userId } },
+				relations: { appUserApplication: true },
+			});
 			expect(row.roleId).toBe(iam.adminRole.id);
-			expect(row.applicationId).toBe(iam.iamApplication.id);
+			expect(row.appUserApplication).toMatchObject({
+				appUserId: userId,
+				applicationId: iam.iamApplication.id,
+			});
 		});
 
 		it('ignores an applicationId sent by the client (whitelist) and uses the role application', async () => {
@@ -87,13 +110,11 @@ describe('POST /apps-users/:id/roles (e2e)', () => {
 				201,
 			);
 
-			expect(dataOf<UserRoleEntity>(response).applicationId).toBe(iam.iamApplication.id);
-		});
-
-		it('does not require the application to be assigned to the user first (documents current behavior)', async () => {
-			await send().expect(201);
-
-			expect(await assignmentCount()).toBe(1);
+			expect(
+				dataOf<{ applications: { applicationId: number }[] }>(response).applications.map(
+					(assignment) => assignment.applicationId,
+				),
+			).toEqual([iam.iamApplication.id]);
 		});
 	});
 
@@ -160,10 +181,58 @@ describe('POST /apps-users/:id/roles (e2e)', () => {
 			expect(await assignmentCount()).toBe(1);
 		});
 
+		it('returns 409 when the application of the role is not assigned to the user', async () => {
+			const ticketHub = await createApplication(testApp.dataSource, 'ticket-hub');
+			const viewer = await createRole(testApp.dataSource, ticketHub.id, 'VIEWER');
+
+			const response = await send(adminAuthorization(), validBody({ roleId: viewer.id })).expect(
+				409,
+			);
+
+			expect(response.body).toEqual({
+				ok: false,
+				msg: 'Application is not assigned to the user',
+				data: null,
+			});
+			expect(await assignmentCount()).toBe(0);
+		});
+
+		it('assigns the role once the application has been assigned to the user', async () => {
+			const ticketHub = await createApplication(testApp.dataSource, 'ticket-hub');
+			const viewer = await createRole(testApp.dataSource, ticketHub.id, 'VIEWER');
+			await send(adminAuthorization(), validBody({ roleId: viewer.id })).expect(409);
+			await grantAppUserApplication(testApp.dataSource, userId, ticketHub.id);
+
+			const response = await send(adminAuthorization(), validBody({ roleId: viewer.id })).expect(
+				201,
+			);
+
+			const { applications } = dataOf<{
+				applications: { applicationId: number; roles: { roleId: number }[] }[];
+			}>(response);
+			expect(
+				applications.find((assignment) => assignment.applicationId === ticketHub.id),
+			).toMatchObject({
+				roles: [{ roleId: viewer.id }],
+			});
+		});
+
+		it('removes the roles of an application assignment when that assignment is deleted', async () => {
+			await send().expect(201);
+			expect(await assignmentCount()).toBe(1);
+
+			await testApp.dataSource
+				.getRepository(UserAppEntity)
+				.delete({ appUserId: userId, applicationId: iam.iamApplication.id });
+
+			expect(await assignmentCount()).toBe(0);
+		});
+
 		it('allows the same role to be assigned to a different user', async () => {
 			await send().expect(201);
 			const otherId = (await createAppUser(testApp.dataSource, { clienteId: 'other-client' }))
 				.entity.id;
+			await grantAppUserApplication(testApp.dataSource, otherId, iam.iamApplication.id);
 
 			await send(adminAuthorization(), validBody(), otherId).expect(201);
 

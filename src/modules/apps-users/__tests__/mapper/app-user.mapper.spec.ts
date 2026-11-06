@@ -1,6 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
+import {
+	applicationAssignment,
+	applicationRow,
+	roleRow,
+} from '../../../../../test/helpers/assignment-rows';
 import { AppUserConnectionEntity } from '../../../../common/database/app-user-connection/app-user-connection.entity';
-import { ApplicationEntity } from '../../../../common/database/application/application.entity';
 import { AppUserEntity } from '../../../../common/database/app-user/app-user.entity';
 import { UserAppEntity } from '../../../../common/database/user-application/user-app.entity';
 import { UserRoleEntity } from '../../../../common/database/user-role/user-role.entity';
@@ -103,28 +107,30 @@ describe('AppUserMapper.toFindAllResponse', () => {
 });
 
 describe('AppUserMapper.toFindAssignedApplicationsResponse', () => {
-	it('wraps the assigned applications in a success envelope', () => {
-		const data = [
-			{
-				applicationId: 1,
-				applicationName: 'iam',
-				applicationDescription: 'Identity',
-				roles: [{ id: 2, name: 'ADMIN', description: 'Administrator' }],
-			},
-		];
+	it('wraps the user with its assignment tree in a success envelope', () => {
+		const user = Object.assign(new AppUserEntity(), {
+			id: 5,
+			applications: [
+				applicationAssignment(applicationRow(1, 'iam', 'Identity'), [
+					roleRow(2, 1, 'ADMIN', 'Administrator'),
+				]),
+			],
+		});
 
-		expect(AppUserMapper.toFindAssignedApplicationsResponse(data)).toMatchObject({
+		const response = AppUserMapper.toFindAssignedApplicationsResponse(user);
+
+		expect(response).toMatchObject({
 			ok: true,
 			msg: 'Assigned applications retrieved successfully',
-			data,
 		});
+		// The entity travels as it is, no copy into a DTO.
+		expect(response.data).toBe(user);
 	});
 
-	it('returns an empty list when nothing is assigned', () => {
-		expect(AppUserMapper.toFindAssignedApplicationsResponse([])).toMatchObject({
-			ok: true,
-			data: [],
-		});
+	it('keeps an empty applications list when nothing is assigned', () => {
+		const user = Object.assign(new AppUserEntity(), { id: 5, applications: [] });
+
+		expect(AppUserMapper.toFindAssignedApplicationsResponse(user).data?.applications).toEqual([]);
 	});
 });
 
@@ -139,83 +145,56 @@ describe('AppUserMapper.toApplicationAssignmentEntity', () => {
 
 describe('AppUserMapper.toRoleAssignmentEntity', () => {
 	it('builds an assignment entity without an id', () => {
-		const entity = AppUserMapper.toRoleAssignmentEntity(5, 7, 3);
+		const entity = AppUserMapper.toRoleAssignmentEntity(9, 7);
 
 		expect(entity).toBeInstanceOf(UserRoleEntity);
-		expect(entity).toEqual({ appUserId: 5, roleId: 7, applicationId: 3 });
+		expect(entity).toEqual({ appUserApplicationId: 9, roleId: 7 });
 	});
 });
 
 describe('AppUserMapper.toAssignApplicationResponse', () => {
-	it('wraps the assignment in a success envelope', () => {
-		const assignment = Object.assign(new UserAppEntity(), {
-			id: 1,
-			appUserId: 5,
-			applicationId: 3,
-			internal: 'hidden',
-		});
+	it('wraps the user with its assignment tree in a success envelope', () => {
+		const response = AppUserMapper.toAssignApplicationResponse(stored);
 
-		expect(AppUserMapper.toAssignApplicationResponse(assignment)).toEqual({
-			ok: true,
-			msg: 'Application assigned to user successfully',
-			data: { id: 1, appUserId: 5, applicationId: 3 },
-		});
+		expect(response.ok).toBe(true);
+		expect(response.msg).toBe('Application assigned to user successfully');
+		expect(response.data).toBe(stored);
 	});
 });
 
 describe('AppUserMapper.toAssignRoleResponse', () => {
-	it('wraps the assignment in a success envelope', () => {
-		const assignment = Object.assign(new UserRoleEntity(), {
-			id: 1,
-			appUserId: 5,
-			roleId: 7,
-			applicationId: 3,
-		});
+	it('wraps the user with its assignment tree in a success envelope', () => {
+		const response = AppUserMapper.toAssignRoleResponse(stored);
 
-		expect(AppUserMapper.toAssignRoleResponse(assignment)).toEqual({
-			ok: true,
-			msg: 'Role assigned to user successfully',
-			data: { id: 1, appUserId: 5, roleId: 7, applicationId: 3 },
-		});
+		expect(response.ok).toBe(true);
+		expect(response.msg).toBe('Role assigned to user successfully');
+		expect(response.data).toBe(stored);
 	});
 });
 
-const connection = {
-	id: 1,
-	originApplicationId: 1,
-	originApplicationName: 'iam',
-	destinationApplicationId: 2,
-	destinationApplicationName: 'crm',
-};
-
 describe('AppUserMapper.toFindConnectionsResponse', () => {
-	it('wraps the connections in a success envelope', () => {
-		expect(AppUserMapper.toFindConnectionsResponse([connection])).toMatchObject({
-			ok: true,
-			msg: 'Connections retrieved successfully',
-			data: [connection],
-		});
-	});
+	it('wraps the user, connections included, in a success envelope', () => {
+		const user = Object.assign(new AppUserEntity(), { id: 5, connections: [] });
 
-	it('returns an empty list when there are no connections', () => {
-		expect(AppUserMapper.toFindConnectionsResponse([])).toMatchObject({ ok: true, data: [] });
+		const response = AppUserMapper.toFindConnectionsResponse(user);
+
+		expect(response.ok).toBe(true);
+		expect(response.msg).toBe('Connections retrieved successfully');
+		expect(response.data).toBe(user);
 	});
 });
 
 describe('AppUserMapper.toCreateConnectionResponse', () => {
-	it('wraps the connection in a success envelope', () => {
-		expect(AppUserMapper.toCreateConnectionResponse(connection)).toMatchObject({
-			ok: true,
-			msg: 'Connection created successfully',
-			data: connection,
-		});
+	it('wraps the user, connections included, in a success envelope', () => {
+		const user = Object.assign(new AppUserEntity(), { id: 5, connections: [] });
+
+		const response = AppUserMapper.toCreateConnectionResponse(user);
+
+		expect(response.ok).toBe(true);
+		expect(response.msg).toBe('Connection created successfully');
+		expect(response.data).toBe(user);
 	});
 });
-
-const applications = [
-	Object.assign(new ApplicationEntity(), { id: 1, name: 'iam' }),
-	Object.assign(new ApplicationEntity(), { id: 2, name: 'crm' }),
-];
 
 describe('AppUserMapper.toConnectionEntity', () => {
 	it('builds a connection entity without an id', () => {
@@ -226,93 +205,6 @@ describe('AppUserMapper.toConnectionEntity', () => {
 
 		expect(entity).toBeInstanceOf(AppUserConnectionEntity);
 		expect(entity).toEqual({ appUserId: 5, originApplicationId: 1, destinationApplicationId: 2 });
-	});
-});
-
-describe('AppUserMapper.toApplicationIds', () => {
-	it('returns the unique origin and destination ids of every connection', () => {
-		const connections = [
-			Object.assign(new AppUserConnectionEntity(), {
-				id: 1,
-				originApplicationId: 1,
-				destinationApplicationId: 2,
-			}),
-			Object.assign(new AppUserConnectionEntity(), {
-				id: 2,
-				originApplicationId: 1,
-				destinationApplicationId: 3,
-			}),
-		];
-
-		expect(AppUserMapper.toApplicationIds(connections)).toEqual([1, 2, 3]);
-	});
-
-	it('returns an empty list when there are no connections', () => {
-		expect(AppUserMapper.toApplicationIds([])).toEqual([]);
-	});
-});
-
-describe('AppUserMapper.toConnectionResponse', () => {
-	it('resolves the application names and exposes only the documented fields', () => {
-		const entity = Object.assign(new AppUserConnectionEntity(), {
-			id: 9,
-			appUserId: 5,
-			originApplicationId: 1,
-			destinationApplicationId: 2,
-			createdAt: new Date('2024-01-01T00:00:00Z'),
-		});
-
-		const response = AppUserMapper.toConnectionResponse(entity, applications);
-
-		expect(response).toEqual({
-			id: 9,
-			originApplicationId: 1,
-			originApplicationName: 'iam',
-			destinationApplicationId: 2,
-			destinationApplicationName: 'crm',
-		});
-	});
-
-	it('leaves the name undefined when the application is not in the list', () => {
-		const entity = Object.assign(new AppUserConnectionEntity(), {
-			id: 9,
-			originApplicationId: 1,
-			destinationApplicationId: 99,
-		});
-
-		expect(AppUserMapper.toConnectionResponse(entity, applications)).toMatchObject({
-			originApplicationName: 'iam',
-			destinationApplicationName: undefined,
-		});
-	});
-});
-
-describe('AppUserMapper.toConnectionResponses', () => {
-	it('maps every connection keeping the given order', () => {
-		const connections = [
-			Object.assign(new AppUserConnectionEntity(), {
-				id: 2,
-				originApplicationId: 2,
-				destinationApplicationId: 1,
-			}),
-			Object.assign(new AppUserConnectionEntity(), {
-				id: 1,
-				originApplicationId: 1,
-				destinationApplicationId: 2,
-			}),
-		];
-
-		const responses = AppUserMapper.toConnectionResponses(connections, applications);
-
-		expect(responses.map((response) => response.id)).toEqual([2, 1]);
-		expect(responses[0]).toMatchObject({
-			originApplicationName: 'crm',
-			destinationApplicationName: 'iam',
-		});
-	});
-
-	it('returns an empty list when there are no connections', () => {
-		expect(AppUserMapper.toConnectionResponses([], applications)).toEqual([]);
 	});
 });
 

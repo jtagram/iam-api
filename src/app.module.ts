@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
+import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ApplicationsModule } from './modules/applications/applications.module';
 import { AppUsersModule } from './modules/apps-users/apps-users.module';
@@ -46,6 +46,8 @@ const jwtModule = JwtModule.registerAsync({
 		{ provide: APP_GUARD, useClass: JwtAuthGuard },
 		{ provide: APP_GUARD, useClass: ApplicationAccessGuard },
 		{ provide: APP_GUARD, useClass: RolesGuard },
+		// Applies class-transformer rules (@Exclude on password / clienteSecret) to every response.
+		{ provide: APP_INTERCEPTOR, useClass: ClassSerializerInterceptor },
 	],
 })
 export class AppModule {}

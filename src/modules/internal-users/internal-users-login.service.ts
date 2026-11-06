@@ -8,7 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { ApplicationsRepository } from '../../common/database/application/applications.repository';
-import { InternalUserConnectionsRepository } from '../../common/database/internal-user-connection/internal-user-connections.repository';
 import { InternalUserAppsRepository } from '../../common/database/internal-user/internal-user-apps.repository';
 import { InternalUserRolesRepository } from '../../common/database/internal-user/internal-user-roles.repository';
 import { InternalUsersRepository } from '../../common/database/internal-user/internal-users.repository';
@@ -40,7 +39,6 @@ export class InternalUsersLoginService {
 		private readonly internalUsersRepository: InternalUsersRepository,
 		private readonly applicationsRepository: ApplicationsRepository,
 		private readonly internalUserAppsRepository: InternalUserAppsRepository,
-		private readonly internalUserConnectionsRepository: InternalUserConnectionsRepository,
 		private readonly internalUserRolesRepository: InternalUserRolesRepository,
 		private readonly rolesRepository: RolesRepository,
 		private readonly jwtService: JwtService,
@@ -82,12 +80,11 @@ export class InternalUsersLoginService {
 			FORBIDDEN_TARGET_ACCESS_MESSAGE,
 		);
 
-		const hasConnection =
-			await this.internalUserConnectionsRepository.existsForInternalUserAndApplications(
-				internalUser.id,
-				originApplication.id,
-				application.id,
-			);
+		const hasConnection = await this.internalUsersRepository.hasConnection(
+			internalUser.id,
+			originApplication.id,
+			application.id,
+		);
 		if (!hasConnection) {
 			throw new ForbiddenException(FORBIDDEN_CONNECTION_MESSAGE);
 		}

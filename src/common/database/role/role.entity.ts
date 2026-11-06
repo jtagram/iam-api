@@ -2,10 +2,16 @@ import {
 	Column,
 	CreateDateColumn,
 	Entity,
+	JoinColumn,
+	ManyToOne,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	Unique,
 	UpdateDateColumn,
 } from 'typeorm';
+import { ApplicationEntity } from '../application/application.entity';
+import { InternalUserRoleEntity } from '../internal-user/internal-user-role.entity';
+import { UserRoleEntity } from '../user-role/user-role.entity';
 
 @Entity({ name: 'apps_roles' })
 @Unique(['applicationId', 'name'])
@@ -27,6 +33,16 @@ export class RoleEntity {
 
 	@UpdateDateColumn({ name: 'updated_at' })
 	updatedAt!: Date;
+
+	@ManyToOne(() => ApplicationEntity, (application) => application.roles)
+	@JoinColumn({ name: 'application_id' })
+	application!: ApplicationEntity;
+
+	@OneToMany(() => UserRoleEntity, (userRole) => userRole.role)
+	appsUsers!: UserRoleEntity[];
+
+	@OneToMany(() => InternalUserRoleEntity, (internalUserRole) => internalUserRole.role)
+	internalUsers!: InternalUserRoleEntity[];
 
 	static builder(): RoleEntityBuilder {
 		return new RoleEntityBuilder();

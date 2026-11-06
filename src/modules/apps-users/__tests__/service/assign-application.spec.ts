@@ -5,38 +5,38 @@ import { ApplicationsRepository } from '../../../../common/database/application/
 import { RolesRepository } from '../../../../common/database/role/roles.repository';
 import { AppUsersRepository } from '../../../../common/database/app-user/app-users.repository';
 import { UserAppEntity } from '../../../../common/database/user-application/user-app.entity';
-import { UserAppsRepository } from '../../../../common/database/user-application/user-apps.repository';
 import { AppUsersService } from '../../apps-users.service';
 
 describe('AppUsersService.assignApplication', () => {
-	let users: { findById: ReturnType<typeof mockFn> };
-	let applications: { findById: ReturnType<typeof mockFn> };
-	let userApps: {
-		existsForAppUserAndApplication: ReturnType<typeof mockFn>;
-		createAssignment: ReturnType<typeof mockFn>;
+	let users: {
+		findById: ReturnType<typeof mockFn>;
+		findByIdWithAssignments: ReturnType<typeof mockFn>;
+		hasApplication: ReturnType<typeof mockFn>;
+		addApplication: ReturnType<typeof mockFn>;
 	};
+	let applications: { findById: ReturnType<typeof mockFn> };
 	let service: AppUsersService;
+	const tree = { id: 1, applications: [{ id: 70, applicationId: 5 }] };
 	const dto = { applicationId: 5 };
 
 	beforeEach(() => {
-		users = { findById: mockFn() };
-		applications = { findById: mockFn() };
-		userApps = {
-			existsForAppUserAndApplication: mockFn(),
-			createAssignment: mockFn(),
+		users = {
+			findById: mockFn(),
+			findByIdWithAssignments: mockFn(),
+			hasApplication: mockFn(),
+			addApplication: mockFn(),
 		};
+		applications = { findById: mockFn() };
 		service = new AppUsersService(
 			users as unknown as AppUsersRepository,
 			applications as unknown as ApplicationsRepository,
 			{} as unknown as RolesRepository,
-			userApps as unknown as UserAppsRepository,
-			{} as never,
-			{} as never,
 		);
 		users.findById.mockResolvedValue({ id: 1 });
+		users.findByIdWithAssignments.mockResolvedValue(tree);
 		applications.findById.mockResolvedValue({ id: 5 });
-		userApps.existsForAppUserAndApplication.mockResolvedValue(false);
-		userApps.createAssignment.mockImplementation((entity: UserAppEntity) =>
+		users.hasApplication.mockResolvedValue(false);
+		users.addApplication.mockImplementation((entity: UserAppEntity) =>
 			Promise.resolve(Object.assign(entity, { id: 70 })),
 		);
 	});
@@ -56,7 +56,7 @@ describe('AppUsersService.assignApplication', () => {
 		await service.assignApplication(1, dto).catch(() => undefined);
 
 		expect(applications.findById).not.toHaveBeenCalled();
-		expect(userApps.createAssignment).not.toHaveBeenCalled();
+		expect(users.addApplication).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFound when the application does not exist', async () => {
@@ -66,38 +66,52 @@ describe('AppUsersService.assignApplication', () => {
 			new NotFoundException('Application not found'),
 		);
 		expect(applications.findById).toHaveBeenCalledWith(5);
-		expect(userApps.createAssignment).not.toHaveBeenCalled();
+		expect(users.addApplication).not.toHaveBeenCalled();
 	});
 
 	it('throws Conflict when the application is already assigned', async () => {
-		userApps.existsForAppUserAndApplication.mockResolvedValue(true);
+		users.hasApplication.mockResolvedValue(true);
 
 		await expect(service.assignApplication(1, dto)).rejects.toThrow(
 			new ConflictException('Application already assigned to this user'),
 		);
-		expect(userApps.existsForAppUserAndApplication).toHaveBeenCalledWith(1, 5);
-		expect(userApps.createAssignment).not.toHaveBeenCalled();
+		expect(users.hasApplication).toHaveBeenCalledWith(1, 5);
+		expect(users.addApplication).not.toHaveBeenCalled();
 	});
 
 	it('persists an assignment for the user and the application', async () => {
 		await service.assignApplication(1, dto);
 
-		const entity = userApps.createAssignment.mock.calls[0][0] as UserAppEntity;
+		const entity = users.addApplication.mock.calls[0][0] as UserAppEntity;
 		expect(entity).toBeInstanceOf(UserAppEntity);
 		expect(entity).toMatchObject({ appUserId: 1, applicationId: 5 });
 	});
 
-	it('returns the created assignment', async () => {
+	it('reloads the user with its assignments after creating and returns that tree', async () => {
 		await expect(service.assignApplication(1, dto)).resolves.toEqual({
 			ok: true,
 			msg: 'Application assigned to user successfully',
-			data: { id: 70, appUserId: 1, applicationId: 5 },
+			data: tree,
 		});
+
+		expect(users.findByIdWithAssignments).toHaveBeenCalledWith(1);
+		expect(users.findByIdWithAssignments).toHaveBeenCalledTimes(1);
+		expect(users.addApplication.mock.invocationCallOrder[0]).toBeLessThan(
+			users.findByIdWithAssignments.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('throws NotFound when the reload returns null', async () => {
+		users.findByIdWithAssignments.mockResolvedValue(null);
+
+		await expect(service.assignApplication(1, dto)).rejects.toThrow(
+			new NotFoundException('Application user not found'),
+		);
 	});
 
 	it('propagates a repository failure', async () => {
 		const failure = new Error('db down');
-		userApps.createAssignment.mockRejectedValue(failure);
+		users.addApplication.mockRejectedValue(failure);
 
 		await expect(service.assignApplication(1, dto)).rejects.toBe(failure);
 	});

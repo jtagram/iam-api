@@ -14,9 +14,8 @@ import {
 	authorizationSignedByAnotherKey,
 	expiredAuthorization,
 } from '../helpers/test-auth';
-import { bodyOf, dataOf, ErrorBody } from '../helpers/response-types';
+import { bodyOf, dataOf, ErrorBody, UserWithConnectionsBody } from '../helpers/response-types';
 import { AppUserConnectionEntity } from '../../src/common/database/app-user-connection/app-user-connection.entity';
-import { ConnectionResponse } from '../../src/common/dto/connection-response.dto';
 
 describe('GET /apps-users/:id/connections (e2e)', () => {
 	let testApp: AppTestApp;
@@ -46,17 +45,20 @@ describe('GET /apps-users/:id/connections (e2e)', () => {
 		return req;
 	}
 
-	it('returns 200 with an empty list when the user has no connections', async () => {
+	it('returns 200 with the user and an empty connection list when it has no connections', async () => {
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
+		expect(bodyOf<{ ok: boolean; msg: string }>(response)).toMatchObject({
 			ok: true,
 			msg: 'Connections retrieved successfully',
-			data: [],
+		});
+		expect(dataOf<UserWithConnectionsBody>(response)).toMatchObject({
+			id: userId,
+			connections: [],
 		});
 	});
 
-	it('returns the connections with the application names', async () => {
+	it('returns the user with its connections and both applications loaded', async () => {
 		const connection = await connectAppUser(
 			testApp.dataSource,
 			userId,
@@ -66,18 +68,16 @@ describe('GET /apps-users/:id/connections (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(response.body).toEqual({
-			ok: true,
-			msg: 'Connections retrieved successfully',
-			data: [
-				{
-					id: connection.id,
-					originApplicationId: iam.iamApplication.id,
-					originApplicationName: 'iam',
-					destinationApplicationId: iam.iamApplication.id,
-					destinationApplicationName: 'iam',
-				},
-			],
+		const user = dataOf<UserWithConnectionsBody>(response);
+		expect(user.id).toBe(userId);
+		expect(user.connections).toHaveLength(1);
+		expect(user.connections[0]).toMatchObject({
+			id: connection.id,
+			appUserId: userId,
+			originApplicationId: iam.iamApplication.id,
+			destinationApplicationId: iam.iamApplication.id,
+			originApplication: { id: iam.iamApplication.id, name: 'iam' },
+			destinationApplication: { id: iam.iamApplication.id, name: 'iam' },
 		});
 	});
 
@@ -101,21 +101,16 @@ describe('GET /apps-users/:id/connections (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(dataOf<ConnectionResponse[]>(response)).toEqual([
-			{
-				id: second.id,
-				originApplicationId: billing.id,
-				originApplicationName: 'billing',
-				destinationApplicationId: iam.iamApplication.id,
-				destinationApplicationName: 'iam',
-			},
-			{
-				id: first.id,
-				originApplicationId: iam.iamApplication.id,
-				originApplicationName: 'iam',
-				destinationApplicationId: billing.id,
-				destinationApplicationName: 'billing',
-			},
+		const { connections } = dataOf<UserWithConnectionsBody>(response);
+		expect(connections.map((connection) => connection.id)).toEqual([second.id, first.id]);
+		expect(
+			connections.map((connection) => [
+				connection.originApplication.name,
+				connection.destinationApplication.name,
+			]),
+		).toEqual([
+			['billing', 'iam'],
+			['iam', 'billing'],
 		]);
 	});
 
@@ -126,7 +121,18 @@ describe('GET /apps-users/:id/connections (e2e)', () => {
 
 		const response = await send().expect(200);
 
-		expect(dataOf<ConnectionResponse[]>(response)).toEqual([]);
+		expect(dataOf<UserWithConnectionsBody>(response)).toMatchObject({
+			id: userId,
+			connections: [],
+		});
+	});
+
+	it('never exposes secrets', async () => {
+		await connectAppUser(testApp.dataSource, userId, iam.iamApplication.id, iam.iamApplication.id);
+
+		const response = await send().expect(200);
+
+		expect(response.text).not.toMatch(/password|\$2[aby]\$|clienteSecret/);
 	});
 
 	describe('errors', () => {

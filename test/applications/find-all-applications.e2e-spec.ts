@@ -76,7 +76,7 @@ describe('GET /applications (e2e)', () => {
 	});
 
 	it('returns an empty list when there are no applications', async () => {
-		await testApp.dataSource.getRepository(ApplicationEntity).clear();
+		await testApp.resetTables();
 
 		const response = await send().expect(200);
 

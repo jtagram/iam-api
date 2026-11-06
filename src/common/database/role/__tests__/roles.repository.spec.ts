@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DataSource, Repository } from 'typeorm';
+import { clearAllTables } from '../../../../../test/helpers/clear-tables';
+import { ENTITIES } from '../../../../../test/helpers/entities';
+import { insertParentRows } from '../../../../../test/helpers/fixtures';
 import { createInMemoryDataSource } from '../../../../../test/helpers/in-memory-db';
 import { RoleEntity } from '../role.entity';
 import { RolesRepository } from '../roles.repository';
@@ -18,7 +21,7 @@ describe('RolesRepository (in-memory db)', () => {
 	let repository: RolesRepository;
 
 	beforeAll(async () => {
-		dataSource = await createInMemoryDataSource([RoleEntity]);
+		dataSource = await createInMemoryDataSource(ENTITIES);
 	});
 
 	afterAll(async () => {
@@ -28,7 +31,8 @@ describe('RolesRepository (in-memory db)', () => {
 	beforeEach(async () => {
 		jest.restoreAllMocks();
 		typeormRepository = dataSource.getRepository(RoleEntity);
-		await typeormRepository.clear();
+		await clearAllTables(dataSource);
+		await insertParentRows(dataSource, { applications: [1, 2] });
 		repository = new RolesRepository(typeormRepository);
 	});
 
@@ -115,22 +119,6 @@ describe('RolesRepository (in-memory db)', () => {
 
 		it('returns an empty list for an application without roles', async () => {
 			await expect(repository.findAllByApplicationId(5)).resolves.toEqual([]);
-		});
-	});
-
-	describe('findAllOrderedByCreatedAtDesc', () => {
-		it('returns every role, the most recently created first', async () => {
-			const first = await repository.createRole(buildRole(2, 'B'));
-			const second = await repository.createRole(buildRole(1, 'A'));
-			await typeormRepository.update(first.id, { createdAt: new Date('2024-01-01T00:00:00Z') });
-
-			const roles = await repository.findAllOrderedByCreatedAtDesc();
-
-			expect(roles.map((role) => role.id)).toEqual([second.id, first.id]);
-		});
-
-		it('returns an empty list when there are no roles', async () => {
-			await expect(repository.findAllOrderedByCreatedAtDesc()).resolves.toEqual([]);
 		});
 	});
 

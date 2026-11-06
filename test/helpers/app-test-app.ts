@@ -3,32 +3,10 @@ import { Test } from '@nestjs/testing';
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { AppUserConnectionEntity } from '../../src/common/database/app-user-connection/app-user-connection.entity';
-import { AppUserEntity } from '../../src/common/database/app-user/app-user.entity';
-import { ApplicationEntity } from '../../src/common/database/application/application.entity';
-import { InternalUserConnectionEntity } from '../../src/common/database/internal-user-connection/internal-user-connection.entity';
-import { InternalUserAppEntity } from '../../src/common/database/internal-user/internal-user-app.entity';
-import { InternalUserRoleEntity } from '../../src/common/database/internal-user/internal-user-role.entity';
-import { InternalUserEntity } from '../../src/common/database/internal-user/internal-user.entity';
-import { RoleEntity } from '../../src/common/database/role/role.entity';
-import { UserAppEntity } from '../../src/common/database/user-application/user-app.entity';
-import { UserRoleEntity } from '../../src/common/database/user-role/user-role.entity';
+import { clearAllTables } from './clear-tables';
+import { ENTITIES } from './entities';
 import { createInMemoryDataSource } from './in-memory-db';
 import { IAM_APPLICATION_NAME, TEST_PRIVATE_KEY, TEST_PUBLIC_KEY } from './test-auth';
-
-/** The 10 entities registered by src/common/database/database.module.ts. */
-export const ENTITIES = [
-	ApplicationEntity,
-	AppUserEntity,
-	RoleEntity,
-	UserRoleEntity,
-	UserAppEntity,
-	InternalUserEntity,
-	InternalUserRoleEntity,
-	InternalUserAppEntity,
-	InternalUserConnectionEntity,
-	AppUserConnectionEntity,
-];
 
 /** Token lifetime configured for the e2e environment (JWT_EXPIRES_IN). */
 export const TEST_JWT_EXPIRES_IN = '15m';
@@ -118,9 +96,7 @@ export async function createAppTestApp(): Promise<AppTestApp> {
 			dataSource,
 			http: () => request(app.getHttpServer() as Parameters<typeof request>[0]),
 			resetTables: async () => {
-				for (const entity of ENTITIES) {
-					await dataSource.getRepository(entity).clear();
-				}
+				await clearAllTables(dataSource);
 			},
 			close: async () => {
 				await app.close();
