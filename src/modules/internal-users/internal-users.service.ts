@@ -105,13 +105,13 @@ export class InternalUsersService {
 		dto: AssignApplicationDto,
 	): Promise<ResponseBody<InternalUserEntity>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
-		
+
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
 		}
 
 		const application = await this.applicationsRepository.findById(dto.applicationId);
-		
+
 		if (!application) {
 			throw new NotFoundException(APPLICATION_NOT_FOUND_MESSAGE);
 		}
@@ -120,19 +120,19 @@ export class InternalUsersService {
 			userId,
 			dto.applicationId,
 		);
-		
+
 		if (alreadyAssigned) {
 			throw new ConflictException(APPLICATION_ALREADY_ASSIGNED_MESSAGE);
 		}
 
 		const entity = InternalUserMapper.toApplicationAssignmentEntity(userId, dto.applicationId);
-		
+
 		await this.internalUsersRepository.addApplication(entity);
 
 		const internalUserWithAssignments =
 			await this.internalUsersRepository.findByIdWithAssignments(userId);
-		
-			if (!internalUserWithAssignments) {
+
+		if (!internalUserWithAssignments) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
 		}
 
@@ -141,13 +141,13 @@ export class InternalUsersService {
 
 	async assignRole(userId: number, dto: AssignRoleDto): Promise<ResponseBody<InternalUserEntity>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
-		
+
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
 		}
 
 		const role = await this.rolesRepository.findById(dto.roleId);
-		
+
 		if (!role) {
 			throw new NotFoundException(ROLE_NOT_FOUND_MESSAGE);
 		}
@@ -156,24 +156,24 @@ export class InternalUsersService {
 			userId,
 			role.applicationId,
 		);
-		
+
 		if (!applicationAssignment) {
 			throw new ConflictException(ROLE_APPLICATION_NOT_ASSIGNED_MESSAGE);
 		}
 
 		const alreadyAssigned = await this.internalUsersRepository.hasRole(userId, dto.roleId);
-		
+
 		if (alreadyAssigned) {
 			throw new ConflictException(ROLE_ALREADY_ASSIGNED_MESSAGE);
 		}
 
 		const entity = InternalUserMapper.toRoleAssignmentEntity(applicationAssignment.id, dto.roleId);
-		
+
 		await this.internalUsersRepository.addRole(entity);
 
 		const internalUserWithAssignments =
 			await this.internalUsersRepository.findByIdWithAssignments(userId);
-		
+
 		if (!internalUserWithAssignments) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
 		}
@@ -183,7 +183,7 @@ export class InternalUsersService {
 
 	async findConnections(userId: number): Promise<ResponseBody<InternalUserEntity>> {
 		const internalUser = await this.internalUsersRepository.findByIdWithConnections(userId);
-		
+
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
 		}
@@ -196,7 +196,7 @@ export class InternalUsersService {
 		dto: CreateConnectionDto,
 	): Promise<ResponseBody<InternalUserEntity>> {
 		const internalUser = await this.internalUsersRepository.findById(userId);
-		
+
 		if (!internalUser) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
 		}
@@ -209,7 +209,7 @@ export class InternalUsersService {
 			userId,
 			dto.originApplicationId,
 		);
-		
+
 		if (!originAssignment) {
 			throw new BadRequestException(ORIGIN_APPLICATION_NOT_ASSIGNED_MESSAGE);
 		}
@@ -218,7 +218,7 @@ export class InternalUsersService {
 			userId,
 			dto.destinationApplicationId,
 		);
-		
+
 		if (!destinationAssignment) {
 			throw new BadRequestException(DESTINATION_APPLICATION_NOT_ASSIGNED_MESSAGE);
 		}
@@ -228,20 +228,20 @@ export class InternalUsersService {
 			dto.originApplicationId,
 			dto.destinationApplicationId,
 		);
-		
+
 		if (alreadyExists) {
 			throw new ConflictException(CONNECTION_ALREADY_EXISTS_MESSAGE);
 		}
 
 		const connection = InternalUserMapper.toConnectionEntity(userId, dto);
-		
+
 		const created = await this.internalUsersRepository.addConnection(connection);
 
 		const internalUserWithConnection = await this.internalUsersRepository.findByIdWithConnection(
 			userId,
 			created.id,
 		);
-		
+
 		if (!internalUserWithConnection) {
 			throw new NotFoundException(INTERNAL_USER_NOT_FOUND_MESSAGE);
 		}
